@@ -4,58 +4,111 @@ setlocal enabledelayedexpansion
 if /i "%~1" equ "" goto usageHelp
 if /i "%~1" equ "?" goto usageHelp
 if /i "%~1" equ "/?" goto usageHelp
-
-set tempdir=M:\temp\temp%random%
-mkdir %tempdir%
-set default_preset=veryslow
-set default_chroma=yuv422p
-set default_crfValue=20
-
-if not exist "%~1" (echo "%~1" does not exist
+if not exist "%~1" (echo "%cd%\%~1" does not exist
 goto end)
 
-if /i "%~2" equ "" (set codec=h264) else (set codec=%~2)
-if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsupported
-goto usageHelp)
+::Summary:
+::1) set defaults
+::2) get inputs
+::3) validate input
+::4) encode to %temp%
+::5) make sure audio is in final container
+::6) move from temp to current dir
 
-if /i "%~3" equ "" (set preset=%default_preset%) else (set preset=%~3)
-if /i "%preset%" neq "ultrafast" if /i "%preset%" neq "superfast" if /i "%preset%" neq "veryfast" if /i "%preset%" neq "faster" if /i "%preset%" neq "fast" if /i "%preset%" neq "medium" if /i "%preset%" neq "slow" if /i "%preset%" neq "slower" if /i "%preset%" neq "veryslow" if /i "%preset%" neq "placebo" (echo preset "%preset%" unsupported
-goto usageHelp)
+::1) set defaults
+set tempdir=%temp%\temp%random%
+mkdir "%tempdir%"
+set tempFileName=temp_rawvideo
+set default_codec=h264
+set default_crfValue=20
+set default_preset=slow
+set default_bitDepth=8
+set default_resolution=none
+set default_chroma=yuv420p
 
-if /i "%~4" equ "" set resolution=other
-if /i "%~4" equ "1080p" (set resolution=1920x1080
+if /i "%processor_Architecture%" equ "x86" set architecture=x86
+if /i "%processor_Architecture%" equ "amd64" set architecture=x64
+set ffmpegexe=bin\%architecture%\ffmpeg.exe
+set x264prefix=bin\%architecture%\x265
+set x265prefix=bin\%architecture%\x265
+set mkmergeExe=bin\%architecture%\mkvmerge.exe
+
+set originalDir=%cd%
+pushd "%~dp0"
+set exePath=%cd%
+popd
+
+::2) get inputs
+set inputVideo_Name=%~n1
+set inputVideo_Extension=%~x1
+
+if /i "%~2" equ "" (set codec=%default_codec%) else (set codec=%~2)
+
+if /i "%~3" equ "" (set preset=%default_crfValue%) else (set crfValue=%~3)
+
+if /i "%~4" equ "" (set preset=%default_preset%) else (set preset=%~4)
+
+if /i "%~5" equ "" (set bitDepth=%default_bitDepth%) else (set bitDepth=%~5)
+
+if /i "%~6" equ "" (set resolution=other
+set quality=other)
+if /i "%~6" equ "1080p" (set resolution=1920x1080
 set quality=1080p)
-if /i "%~4" equ "720p" (set resolution=1280x720
+if /i "%~6" equ "720p" (set resolution=1280x720
 set quality=720p)
-if /i "%~4" equ "480p" (set resolution=854x480
+if /i "%~6" equ "480p" (set resolution=854x480
 set quality=480p)
+
+if /i "%~7" equ "" (set chroma=%default_chroma%) else (set chroma=%~7)
+
+::vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {resolution} {chroma}
+::3) validate input
+
+if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsupported, Supported codecs: h264, h265
+goto end)
+
+if /i %crfValueset% lss 0 (echo   crfValue "%crfValue%" not valid, must be greater than or = 0
+goto end)
+if /i %crfValueset% gtr 51 (echo   crfValue "%crfValue%" not valid, must be less than 52
+goto end)
+
+if /i "%preset%" neq "ultrafast" if /i "%preset%" neq "superfast" if /i "%preset%" neq "veryfast" if /i "%preset%" neq "faster" if /i "%preset%" neq "fast" if /i "%preset%" neq "medium" if /i "%preset%" neq "slow" if /i "%preset%" neq "slower" if /i "%preset%" neq "veryslow" if /i "%preset%" neq "placebo" (echo preset "%preset%" unsupported, Supported presets: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow, placebo
+goto usageHelp)
+
+if /i "%bitDepth%" neq "8" f /i "%bitDepth%" neq "10" f /i "%bitDepth%" neq "12" (echo   bit depth "%bitDepth%" not supported, 8, 10, 12 only
+goto end)
+
+if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" (echo  resolution unrecognized, using source video's resolution instead
+set resolution=other
+set quality=other)
+
 if /i "%resolution%" neq "other" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "854x480" (echo resolution "%~4" not supported, defaulting to input video size
 set resolution=other)
 
-call :parsePath "%~1"
+if /i "%chroma%" neq "yuv420p" f /i "%chroma%" neq "yuv422p" f /i "%chroma%" neq "yuv444p" (echo   Warning: chroma "%chroma%" unrecognized
+echo     Known values: yuv420p, yuv422p, yuv444p)
 
-set inputVideo_FullNameAndPath=%fullpath%
-set inputVideo_Path=%fullfolderpath%
-set inputVideo_Name=%filename%
-set inputVideo_Extension=%extension%
-set tempFileName=temp_rawvideo
 
-if /i "%codec%" equ "h264" goto h264
-if /i "%codec%" equ "h265" goto h265
+if /i "%bitDepth%" equ "8" goto ffmpeg
+if /i "%bitDepth%" neq "8" goto videoPipe
 
-:h264
-if /i "%resolution%" equ "other" set outputname=%inputVideo_Path%\%inputVideo_Name%.h264.%extension%
-if /i "%resolution%" neq "other" set outputname=%inputVideo_Path%\%inputVideo_Name%.%quality%.h264.%extension%
+::if 8 bit, use ffmpeg + settings
+::if 10-12 bit, make sure the correct bit depth x254/x265 file is present, then use ffmpeg to dump the y4m file
+::encode it, then use mkvmerge to merge the old contents and the new video
+
+:ffmpeg
+if /i "%resolution%" equ "other" set outputname=%inputVideo_Name%.h264.%extension%
+if /i "%resolution%" neq "other" set outputname=%inputVideo_Name%.%quality%.h264.%extension%
 if exist "%outputname%" del "%outputname%"
 
 if "%resolution%" equ "other" ffmpeg.exe -i "%inputVideo_FullNameAndPath%" -crf %default_crfValue% -preset %preset% -c:a aac -strict experimental -b:a 192k "%outputname%"
 if "%resolution%" neq "other" ffmpeg.exe -i "%inputVideo_FullNameAndPath%" -vf scale=%resolution% -crf %default_crfValue% -preset %preset% -c:a aac -strict experimental -b:a 192k "%outputname%"
 goto end
 
-:h265
+:videoPipe
 if exist "%tempdir%\%tempfilename%.y4m" del "%tempdir%\%tempfilename%.y4m"
-if /i "%resolution%" equ "other" set outputname=%inputVideo_Path%\%inputVideo_Name%.h265
-if /i "%resolution%" neq "other" set outputname=%inputVideo_Path%\%inputVideo_Name%.%quality%.h265
+if /i "%resolution%" equ "other" set outputname=%inputVideo_Name%.h265
+if /i "%resolution%" neq "other" set outputname=%inputVideo_Name%.%quality%.h265
 if exist "%outputname%" del "%outputname%"
 
 if /i "%resolution%" equ "other" ffmpeg -i "%inputVideo_FullNameAndPath%" -an -sn -pix_fmt %default_chroma% "%tempdir%\%tempfilename%.y4m"
@@ -67,88 +120,37 @@ goto end
 
 
 :functions
-::parsePath returns drive, extension, lastEntry, filename, foldername, filepath, folderpath (no trailing \ either at the start or end, and not incl the last entry), fullfolderpath (again, no last entry) and fullpath
-::if not valid will return nul for a value (check for it, especially folderpath will be nul if asked to parse d:\), maximum depth=26
-::a non-serialized version with spaces and comments for debuging and alteration is available at D:\workspace\generalInfo\code snippets\strings\buildPathv2.bat
-::Syntax:
-::echo drive=%drive%                                       &:: returns nul if driveFlag ":" was not set
-::echo extension=%extension%                       &:: just the extension no dot, but returns nul if folderFlag "\" is set
-::echo lastEntry=%lastEntry%                          &:: consistently returns folder/filename in rawFormat
-::echo filename=%filename%                           &:: filename with no extension but returns nul if folderFlag "\" was set
-::echo foldername=%foldername%                 &:: returns 2nd to last name in path, unless folderFlag, then returns lastEntry
-::echo filepath=%filepath%                               &:: does not include last entry (same as folderpath)
-::echo folderpath=%folderpath%                      &:: does not include last entry (same as filepath)
-::echo fullfolderpath=%fullfolderpath%             &:: this is the folderpath with the drive letter but not lastEntry
-::echo fullpath=%fullpath%                                &:: this is the folderpath with the drive letter and lastEntry
-::Example: call :parsePath  d:\my\lo ng\p ath.txt
-::echo drive=%drive%                                       d:
-::echo extension=%extension%                       txt
-::echo lastEntry=%lastEntry%                          p ath.txt
-::echo filename=%filename%                          path
-::echo foldername=%foldername%                 p ath.txt
-::echo filepath=%filepath%                               my\lo ng
-::echo folderpath=%folderpath%                      my\lo ng
-::echo fullfolderpath=%fullfolderpath%            d:\my\lo ng
-::echo fullpath=%fullpath%                                d:\my\lo ng\p ath.txt
-:parsePath
-if "%~1" equ "" goto :eof
-set folderFlag=false&set rawDriveFlag=false&set oneEntryFlag=false&set twoEntryFlag=false&set rawInput=%~1
-if /i "%rawInput:~-1%" equ "\" set folderFlag=true
-if /i "%rawInput:~-1%" equ "\" set rawInput=%rawInput:~,-1%
-if /i "%rawInput:~-1%" equ " " set rawInput=%rawInput:~,-1%
-if /i "%rawInput:~-1%" equ " " set rawInput=%rawInput:~,-1%
-if /i "%rawInput:~-1%" equ " " set rawInput=%rawInput:~,-1%
-set windows_extension=%~x1&set windows_filename_noext=%~n1
-for /f "tokens=1-26 delims=\" %%a in ("%rawInput%") do (set entry0=%%a&set entry1=%%b&set entry2=%%c&set entry3=%%d&set entry4=%%e&set entry5=%%f&set entry6=%%g&set entry7=%%h&set entry8=%%i&set entry9=%%j&set entry10=%%k&set entry11=%%l&set entry12=%%m&set entry13=%%n&set entry14=%%o&set entry15=%%p&set entry16=%%q&set entry17=%%r&set entry18=%%s&set entry19=%%t&set entry20=%%u&set entry21=%%v&set entry22=%%w&set entry23=%%x&set entry24=%%y&set entry25=%%z)
-set counter=0
-for /l %%a in (0,1,25) do if /i "!entry%%a%!" neq "" set /a counter+=1
-set /a maxPaths=%counter%-1
-if "!entry0:~-1!" equ ":" set rawDriveFlag=true
-if %maxPaths% equ 0 (set oneEntryFlag=true
-goto assignOutput)
-if %maxPaths% equ 1 (set twoEntryFlag=true
-goto assignOutput)
-if exist tempFilePaths.txt del tempFilePaths.txt&set string=invalid
-set /a maxPaths=%counter%-2
-for /l %%a in (1,1,%maxPaths%) do echo !entry%%a%!>>tempFilePaths.txt
-if exist tempFilePaths.txt set /p string=<tempFilePaths.txt
-for /f "skip=1 tokens=*" %%a in (tempFilePaths.txt) do set string=!string!\%%a
-if exist tempFilePaths.txt del tempFilePaths.txt
-set secondToLastEntry=!entry%maxPaths%!
-set /a maxPaths=%counter%-1
-set lastEntry=!entry%maxPaths%!
-:assignOutput
-if /i "%rawDriveFlag%" equ "true" (set drive=!entry0!)
-if /i "%rawDriveFlag%" neq "true" (set drive=nul)
-if "%oneEntryFlag%" equ "true" if /i "%rawDriveFlag%" equ "true" (set lastEntry=!entry0!&set foldername=nul&set filepath=nul&set folderpath=nul&set fullfolderpath=!entry0!&set fullpath=!entry0!&goto finalCleanup)
-if "%oneEntryFlag%" equ "true" if /i "%rawDriveFlag%" equ "false" (set lastEntry=!entry0!&set foldername=!entry0!&set filepath=nul&set folderpath=nul&set fullfolderpath=nul&set fullpath=nul&goto finalCleanup)
-if "%twoEntryFlag%" equ "true" if /i "%rawDriveFlag%" equ "true" (set lastEntry=!entry1!&set foldername=!entry1!&set filepath=nul&set folderpath=nul&set fullfolderpath=!entry0!&set fullpath=!entry0!&goto finalCleanup)
-if "%twoEntryFlag%" equ "true" if /i "%rawDriveFlag%" neq "true" (set lastEntry=!entry1!&set foldername=!entry0!&set filepath=!entry0!&set folderpath=!entry0!&set fullfolderpath=!entry0!&set fullpath=!entry0!&goto finalCleanup)
-if /i "%folderFlag%" neq "true" (set lastEntry=%lastEntry%&set foldername=%lastEntry%&set filepath=%string%&set folderpath=%string%&set fullfolderpath=!entry0!\%string%&set fullpath=!entry0!\%string%\%lastEntry%&goto finalCleanup)
-if /i "%folderFlag%" equ "true" (set lastEntry=%lastEntry%&set foldername=%lastEntry%&set filepath=%string%&set folderpath=%string%&set fullfolderpath=!entry0!\%string%&set fullpath=!entry0!\%string%\%lastEntry%&goto finalCleanup)
-echo unspecified error&goto :eof
-:finalCleanup
-if /i "%windows_extension%" equ "" (set extension=nul) else (set extension=%windows_extension%)
-for /f "delims=." %%a in ("%extension%") do set extension=%%a
-if /i "%folderFlag%" neq "true" (set filename=%windows_filename_noext%)
-if /i "%folderFlag%" equ "true" (set extension=nul&set filename=nul)
+
 goto :eof
 
 ::defaults h264, 720p, "slow" quality
 :usageHelp
-echo.
-echo   "encode" re-encodes an existing file into h264/h265 formats
-echo   h264 encoding preserves containers but h265 outputs a raw .h265 file
-echo   Dependencies: ffmpeg.exe, x265.exe (compiled w/desired bit depth)
+echo   "vEncode" re-encodes an existing file into h264/h265 formats
+echo   Dependencies: 
+echo   Basic: ffmpeg.exe, mkvmerge.exe
+echo   For 10Bit Support: x264-10.exe, x265-10.exe, ~50GB HD space
+echo   For 12Bit Support: x264-12.exe, x265-12.exe, ~50GB HD space
 echo   Syntax:
-echo   encode myfile.mp4 {h264/h265} {slow} {720p}
+echo   vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {resolution} {chroma}
 echo   Examples:
-echo   encode "c:\myfile.mkv" 
-echo   encode "c:\myfile.mkv" h264 
-echo   encode "c:\myfile.mkv" h264 slow
-echo   encode "c:\myfile.mkv" "" slow
-echo   encode "c:\myfile.mkv" h265 slow 720p
-echo   encode "c:\myfile.mkv" h265 "" 720p
+echo   vEncode myfile.mkv
+echo   vEncode "my file.mkv" h264
+echo   vEncode "my file.mkv" h265
+echo   vEncode file.mkv h264 20
+echo   vEncode file.mkv "" 20
+echo   vEncode file.mkv "" 20 veryslow
+echo   vEncode file.mkv h265 20 slow 8
+echo   vEncode file.mkv h265 "" slow 8 720p
+echo   vEncode file.mkv h264 "" slow 8 480p yuv420
+echo   vEncode file.mkv h265 18 slow 10 1080p yuv444
+echo.
+echo   Suggested values and (defaults):
+echo   CRF values: usually 16-28, (20)
+echo   Presets: ultrafast,medium,slow,veryslow,placebo, (slow)
+echo   Bit depth: 8, 10 or 12, (8)
+echo   Resolution: 480p, 720p, 1080p, (n/a)
+echo   PixelFormat: yuv420p, yuv422p, yuv444p, (yuv420p)
+
 :end
 if exist "%tempdir%" rmdir /s /q "%tempdir%"
 endlocal
