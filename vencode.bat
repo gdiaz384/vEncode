@@ -4,6 +4,7 @@ setlocal enabledelayedexpansion
 if /i "%~1" equ "" goto usageHelp
 if /i "%~1" equ "?" goto usageHelp
 if /i "%~1" equ "/?" goto usageHelp
+if /i "%~1" equ "*" goto batchvEncode
 if not exist "%~1" (echo "%cd%\%~1" does not exist
 goto end)
 
@@ -16,17 +17,29 @@ goto end)
 
 ::1) set defaults
 set tempdir=%temp%\temp%random%
-::mkdir "%tempdir%"
 set default_codec=h265
+::h264, h265
 set default_crfValue=18
+::16-28
 set default_preset=veryslow
+::ultrafast, veryfast, fast, medium, slow, veryslow, placebo
 set default_bitDepth=10
-set default_resolution=none
+::8, 10, 12
+set default_quality=other
+::480p, 720p, 1080p, other
 set default_chroma=yuv422p
+::yuv420p, yuv422p, yuv444p
+set useFFmpegFor8BitEncodes=true
+::true, false
+set encodeAudio=true
+::true, false
+set aacBitrate=192
+::128,192,224,320
+set preferredContainer=mkv
+::mkv, mp4
 
 if /i "%processor_Architecture%" equ "x86" set architecture=x86
 if /i "%processor_Architecture%" equ "amd64" set architecture=x64
-
 set originalDir=%cd%
 pushd "%~dp0"
 set exePath=%cd%
@@ -50,14 +63,11 @@ if /i "%~4" equ "" (set preset=%default_preset%) else (set preset=%~4)
 
 if /i "%~5" equ "" (set bitDepth=%default_bitDepth%) else (set bitDepth=%~5)
 
-if /i "%~6" equ "" (set resolution=other
-set quality=other)
-if /i "%~6" equ "1080p" (set resolution=1920x1080
-set quality=1080p)
-if /i "%~6" equ "720p" (set resolution=1280x720
-set quality=720p)
-if /i "%~6" equ "480p" (set resolution=854x480
-set quality=480p)
+if /i "%~6" equ "" (set quality=%default_quality%) else (set quality=%~6)
+set resolution=other
+if /i "%quality%" equ "1080p" (set resolution=1920x1080)
+if /i "%quality%" equ "720p" (set resolution=1280x720)
+if /i "%quality%" equ "480p" (set resolution=854x480)
 
 if /i "%~7" equ "" (set chroma=%default_chroma%) else (set chroma=%~7)
 
@@ -85,7 +95,7 @@ if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq
 set resolution=other
 set quality=other)
 
-if /i "%chroma%" neq "yuv420p" f /i "%chroma%" neq "yuv422p" f /i "%chroma%" neq "yuv444p" (echo   Warning: chroma "%chroma%" unrecognized
+if /i "%chroma%" neq "yuv420p" if /i "%chroma%" neq "yuv422p" if /i "%chroma%" neq "yuv444p" (echo   Warning: chroma "%chroma%" unrecognized
 echo     Known values: yuv420p, yuv422p, yuv444p)
 
 ::There might be options specified that are incompatible together (such as 10/12 bit h264 and non yuv420p chromas)
@@ -97,8 +107,9 @@ echo     Known values: yuv420p, yuv422p, yuv444p)
 ::if 10-12 bit, make sure the correct bit depth x254/x265 file is present, then use ffmpeg to dump the y4m file
 ::encode it, then use mkvmerge to merge the old contents and the new video
 
-if /i "%bitDepth%" equ "8" goto ffmpeg
-if /i "%bitDepth%" neq "8" goto videoPipe
+::mkdir "%tempdir%"
+if /i "%useFFmpegFor8BitEncodes%" equ "true" if /i "%bitDepth%" equ "8" goto ffmpeg
+goto videoPipe
 
 :ffmpeg
 set inputname=%inputVideo_Name%%inputVideo_Extension%
@@ -110,19 +121,22 @@ if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
 if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
-if "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -c:a aac -strict experimental -b:a 192k "%outputname_noext%.mp4"
-if "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -vf scale=%resolution% -c:a aac -strict experimental -b:a 192k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -vf scale=%resolution% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "false" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "false" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -vf scale=%resolution% -an "%outputname_noext%.mp4"
 goto postFFmpegEncode
 
 :ffmpegH265
-if "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%"  -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -strict experimental -b:a 192k "%outputname_noext%.mp4"
-if "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%"  -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -strict experimental -b:a 192k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "false" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "false" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
 
 :postFFmpegEncode
-"%mkvMergeExe%" --output %outputname_noext%.mkv "%outputname_noext%.mp4"
-::--title "inputVideo_Name"
+if /i "%preferredContainer%" equ "mkv" "%mkvMergeExe%" --output "%outputname_noext%".mkv "%outputname_noext%.mp4"
 
-if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mkv" if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
 goto end
 
 
@@ -154,17 +168,49 @@ goto afterVideoPipeH265
 "%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
-"%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video "%inputname%" "%outputname_noext%.%codec%"
-::--title "inputVideo_Name"
+if /i "%encodeAudio%" equ "true" ffmpeg -sn -vn -i "%inputname%" -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.aac"
+if /i "%encodeAudio%" equ "true" "%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video --no-audio "%inputname%" "%outputname_noext%.%codec%" "%outputname_noext%.aac"
+if /i "%encodeAudio%" equ "true" del "%outputname_noext%.aac"
+
+if /i "%encodeAudio%" neq "true" "%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video "%inputname%" "%outputname_noext%.%codec%"
 
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
+
+if /i "%preferredContainer%" neq "mkv" ffmpeg -i "%outputname_noext%.mkv" -vcodec copy -acodec copy "%outputname_noext%.mp4"
+if /i "%preferredContainer%" neq "mkv" if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 goto end
 
 
+:batchvEncode
+set tempfile=temp.txt
+if exist "%tempfile%" del "%tempfile%"
+if exist "temp.cmd" del "temp.cmd"
+
+dir /b *.mkv >> %tempfile% 2>nul
+dir /b *.mp4 >> %tempfile% 2>nul
+dir /b *.mpg >> %tempfile% 2>nul
+dir /b *.avi >> %tempfile% 2>nul
+dir /b *.wmv >> %tempfile% 2>nul
+dir /b *.flv >> %tempfile% 2>nul
+dir /b *.webm >> %tempfile% 2>nul
+dir /b *.h264 >> %tempfile% 2>nul
+dir /b *.h265 >> %tempfile% 2>nul
+dir /b *.avc >> %tempfile% 2>nul
+
+for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 >> temp.cmd
+
+if exist "%tempfile%" del "%tempfile%"
+type temp.cmd
+call temp.cmd
+type temp.cmd
+del temp.cmd
+
+goto end
+
 ::defaults h264, 720p, "slow" quality
 :usageHelp
-echo   "vEncode" re-encodes an existing file into h264/h265 formats
+echo   "vEncode" encodes an existing file into h264/h265 formats
 echo   Dependencies: ffmpeg.exe, mkvmerge.exe
 echo   For 10Bit Support: x264-10.exe, x265-10.exe, ~50GB HD space
 echo   For 12Bit Support: x264-12.exe, x265-12.exe, ~50GB HD space
@@ -184,12 +230,15 @@ echo   vEncode file.mkv h265 20 slow 10 "" yuv422p
 echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p
 echo.
 echo   Suggested values and (defaults):
+echo   Codec: h264, h265, (h265)
 echo   CRF values: usually 16-28, (18)
 echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 echo   Bit depth: 8, 10 or 12, (10)
 echo   Resolution: 480p, 720p, 1080p, (n/a)
 echo   PixelFormat: yuv420p, yuv422p, yuv444p, (yuv422p)
-
+echo.
+echo   To encode all video files in a directory:
+echo   vEncode * h265 18 veryslow 10 "" yuv422p
 :end
 if exist "%tempdir%" rmdir /s /q "%tempdir%"
 endlocal

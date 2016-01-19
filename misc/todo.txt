@@ -1,6 +1,4 @@
 Todo:
-New Funct: Add encode directory option (Syntax: vEncode * h265)
-New Funct: Add option to use h264-8.exe and h265-8.exe for 8-bit encodes.
-New Funct: Add option to leave files in .mp4 or .mkv format at the end (ffmpeg)
-Rewrite: Do not encode audio, just copy it to new container instead.
+Rewrite: Inconsistent if audio will be present in final container.
 Bug: Figure out why 12-bit yuv444p doesn't work.
+Bug: Files with & in the name error out (cannot parse/fix due to reserved character in CLI)
