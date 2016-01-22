@@ -1,4 +1,5 @@
 Todo:
 Rewrite: Inconsistent if audio will be present in final container.
+Rewrite: Add opus support (will not fit into mp4, default to mkv instead)
 Bug: Figure out why 12-bit yuv444p doesn't work.
 Bug: Files with & in the name error out (cannot parse/fix due to reserved character in CLI)

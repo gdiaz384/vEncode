@@ -121,15 +121,15 @@ if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
 if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
-if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
-if /i "%encodeAudio%" equ "true" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -vf scale=%resolution% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -c:a aac -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -vf scale=%resolution% -c:a aac -b:a %aacBitrate%k "%outputname_noext%.mp4"
 if /i "%encodeAudio%" equ "false" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an "%outputname_noext%.mp4"
 if /i "%encodeAudio%" equ "false" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -vf scale=%resolution% -an "%outputname_noext%.mp4"
 goto postFFmpegEncode
 
 :ffmpegH265
-if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
-if /i "%encodeAudio%" equ "true" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -b:a %aacBitrate%k "%outputname_noext%.mp4"
+if /i "%encodeAudio%" equ "true" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -c:a aac -b:a %aacBitrate%k "%outputname_noext%.mp4"
 if /i "%encodeAudio%" equ "false" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
 if /i "%encodeAudio%" equ "false" if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
 
@@ -168,7 +168,7 @@ goto afterVideoPipeH265
 "%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
-if /i "%encodeAudio%" equ "true" ffmpeg -sn -vn -i "%inputname%" -c:a aac -strict experimental -b:a %aacBitrate%k "%outputname_noext%.aac"
+if /i "%encodeAudio%" equ "true" ffmpeg -sn -vn -i "%inputname%" -c:a aac -b:a %aacBitrate%k "%outputname_noext%.aac"
 if /i "%encodeAudio%" equ "true" "%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video --no-audio "%inputname%" "%outputname_noext%.%codec%" "%outputname_noext%.aac"
 if /i "%encodeAudio%" equ "true" del "%outputname_noext%.aac"
 
