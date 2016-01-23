@@ -1,5 +1,11 @@
 Todo:
-Rewrite: Inconsistent if audio will be present in final container.
-Rewrite: Add opus support (will not fit into mp4, default to mkv instead)
+:vencode:
+Rewrite: Inconsistent if audio will be present in final container. Audio should be done in 1 section.
+Rewrite: Add audio support (1 track only) but incl opus (will not fit into mp4, default to mkv instead)
 Bug: Figure out why 12-bit yuv444p doesn't work.
 Bug: Files with & in the name error out (cannot parse/fix due to reserved character in CLI)
+
+:aencode:
+quality: test more, especially multi audio files
+Rewrite: use bin\ executables instead of assuming enviornmental path
+Rewrite: require audio codec instead of defaulting to one (or at least require "y" key press) 
