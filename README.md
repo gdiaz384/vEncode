@@ -72,8 +72,8 @@ For 12Bit Support: x264-12.exe, x265-12.exe, ~50GB HD space
 
 ## Download:
 ```
-Latest Version: 1.0.0-rc1
-In Development: 1.0.0-rc2
+Latest Version: 1.0.0-beta
+In Development: 1.0.0-rc1
 ```
 Click [here](//github.com/gdiaz384/vEncode/releases) or on "releases" at the top to download the latest version.
 
