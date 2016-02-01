@@ -65,13 +65,12 @@ set audioExtension=ac3)
 if /i "%audioBitrate%" neq "96" if /i "%audioBitrate%" neq "128" if /i "%audioBitrate%" neq "160" if /i "%audioBitrate%" neq "192" if /i "%audioBitrate%" neq "224" if /i "%audioBitrate%" neq "320" (echo unrecognized bitrate "%audioBitrate%" (echo Using default of "%default_audioBitrate%" instead
 set audioBitrate=%default_audioBitrate%)
 
-if /i "%default_flag%" equ "true" (
+if /i "%default_flag%" neq "true" goto continue
 echo.
 echo   aEncode will now encode video files found in 
-echo   %cd% 
-echo   into "%audioCodec%" format. Continue? (y/n)
+echo   "%cd%"
+echo   into "%audioCodec%" format. Continue? y/n
 echo.
-)
 set /p input=
 if /i "%input%" equ "1" goto continue
 if /i "%input%" equ "y" goto continue
