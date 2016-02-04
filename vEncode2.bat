@@ -36,7 +36,7 @@ set useFFmpegFor8BitEncodes=true
 
 set encodeAudio=false
 ::true, false
-set audioCodec=opus
+set default_audioCodec=opus
 ::opus, vorbis, aac, mp3, ac3
 set audioBitrate=192
 ::128,192,224,320
@@ -77,6 +77,11 @@ if /i "%quality%" equ "480p" (set resolution=854x480)
 
 if /i "%~7" equ "" (set chroma=%default_chroma%) else (set chroma=%~7)
 
+if /i "%~8" equ "" (set audioCodec=%default_audioCodec%) else (
+set audioCodec=%~7
+set encodeAudio=true
+)
+
 
 ::3) validate input
 if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsupported, Supported codecs: h264, h265
@@ -110,8 +115,6 @@ echo     Known values: yuv420p, yuv422p, yuv444p)
 if /i "%audioCodec%" equ "opus" set preferredContainer=mkv
 if /i "%audioCodec%" equ "vorbis" set preferredContainer=mkv
 
-if /i "%encodeAudio%" neq "true" (set codecLibrary=copy
-set audioExtension=mkv)
 if /i "%audioCodec%" equ "opus" (set codecLibrary=libopus
 set audioExtension=opus)
 if /i "%audioCodec%" equ "vorbis" (set codecLibrary=libvorbis
@@ -122,13 +125,17 @@ if /i "%audioCodec%" equ "mp3" (set codecLibrary=libmp3lame
 set audioExtension=mp3)
 if /i "%audioCodec%" equ "ac3" (set codecLibrary=ac3
 set audioExtension=ac3)
+if /i "%encodeAudio%" neq "true" (set codecLibrary=copy
+set audioExtension=mkv)
 
 
 ::vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {resolution} {chroma}
 ::4) encode to %temp%
 ::if 8 bit, use ffmpeg + settings
 ::if 10-12 bit, make sure the correct bit depth x254/x265 file is present, then use ffmpeg to dump the y4m file
-::encode it, then use mkvmerge to merge the old contents and the new video
+::encode it
+::encode/copy the audio
+::then use mkvmerge to merge the new video, the audio, and the old contents
 
 ::mkdir "%tempdir%"
 if /i "%useFFmpegFor8BitEncodes%" equ "true" if /i "%bitDepth%" equ "8" goto ffmpeg
@@ -140,8 +147,7 @@ set outputname_noext=%inputVideo_Name%.%codec%
 if /i "%resolution%" neq "other" set outputname_noext=%outputname_noext%.%quality%
 ::set outputname_noext=%outputname_noext%.mp4
 
-if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
-if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
+if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4%"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
 if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an copy "%outputname_noext%.mp4"
@@ -153,7 +159,9 @@ if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -
 if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
 
 :postFFmpegEncode
-if /i "%encodeAudio%" equ "true" if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -c:a aac -b:a %aacBitrate%k "%outputname_noext%.mkv"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an "%outputname_noext%.mkv"
+
+call :encodeAudioFunct "%inputname%"
 
 if /i "%preferredContainer%" equ "mkv" "%mkvMergeExe%" --output "%outputname_noext%".mkv "%outputname_noext%.mp4"
 
@@ -176,12 +184,11 @@ goto end)
 
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
-if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 
 if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt %chroma% "%outputname_noext%.y4m"
 if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -vf scale=%resolution% -pix_fmt %chroma% "%outputname_noext%.y4m"
 
-::h264 and h265 might use different syntaxes
+::h264 and h265 use different syntaxes
 if /i "%codec%" equ "h265" goto videoPipeH265
 "%encodeExe%" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%" "%outputname_noext%.y4m"
 goto afterVideoPipeH265
@@ -189,12 +196,17 @@ goto afterVideoPipeH265
 "%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
-if /i "%encodeAudio%" equ "true" ffmpeg -sn -vn -i "%inputname%" -c:a aac -b:a %aacBitrate%k "%outputname_noext%.aac"
-if /i "%encodeAudio%" equ "true" "%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video --no-audio "%inputname%" "%outputname_noext%.%codec%" "%outputname_noext%.aac"
-if /i "%encodeAudio%" equ "true" del "%outputname_noext%.aac"
+if exist "%outputname_noext%.%preferredContainer%" del "%outputname_noext%.%preferredContainer%"
 
-if /i "%encodeAudio%" neq "true" "%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video "%inputname%" "%outputname_noext%.%codec%"
+::::if prefered container is mkv, then use mkvmerge to copy the video stream and the audio streams, and the source file
+"%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video --no-audio "%inputname%" "%outputname_noext%.%codec%" "%outputname_noext%.aac"
+del "%outputname_noext%.aac"
+"%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video "%inputname%" "%outputname_noext%.%codec%"
 
+::if prefered container is mp4, then use ffmpeg to copy the video stream and the audio streams
+
+
+::cleanup
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
 
@@ -228,6 +240,15 @@ type temp.cmd
 del temp.cmd
 
 goto end
+
+
+::takes a filesource %1 as an input
+:encodeAudioFunct
+set audioInput=%~1
+
+ffmpeg -sn -vn -i "%audioInput%" -c:a aac -b:a %audioBitrate%k "%audioInput%.%audioExtension%"   
+
+goto :eof
 
 ::defaults h264, 720p, "slow" quality
 :usageHelp
