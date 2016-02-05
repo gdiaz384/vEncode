@@ -31,17 +31,17 @@ set default_quality=other
 ::480p, 720p, 1080p, other
 set default_chroma=yuv422p
 ::yuv420p, yuv422p, yuv444p
-set useFFmpegFor8BitEncodes=true
+set useFFmpegFor8BitEncodes=false
 ::true, false
 
-set encodeAudio=false
+set encodeAudio=true
 ::true, false
 set default_audioCodec=opus
-::opus, vorbis, aac, mp3, ac3
+::opus, vorbis, aac, mp3, ac3, copy
 set audioBitrate=192
 ::128,192,224,320
 
-set preferredContainer=mkv
+set preferredContainer=mp4
 ::mkv, mp4
 
 if /i "%processor_Architecture%" equ "x86" set architecture=x86
@@ -78,7 +78,7 @@ if /i "%quality%" equ "480p" (set resolution=854x480)
 if /i "%~7" equ "" (set chroma=%default_chroma%) else (set chroma=%~7)
 
 if /i "%~8" equ "" (set audioCodec=%default_audioCodec%) else (
-set audioCodec=%~7
+set audioCodec=%~8
 set encodeAudio=true
 )
 
@@ -114,6 +114,9 @@ echo     Known values: yuv420p, yuv422p, yuv444p)
 ::opus/vorbis audio are incompatible with mp4 container, default to mkv instead
 if /i "%audioCodec%" equ "opus" set preferredContainer=mkv
 if /i "%audioCodec%" equ "vorbis" set preferredContainer=mkv
+::could also use ffprobe to discover the audio format to see if it's compatible with mp4
+::instead of blindly assuming it's not
+if /i "%audioCodec%" equ "copy" set preferredContainer=mkv
 
 if /i "%audioCodec%" equ "opus" (set codecLibrary=libopus
 set audioExtension=opus)
@@ -125,6 +128,8 @@ if /i "%audioCodec%" equ "mp3" (set codecLibrary=libmp3lame
 set audioExtension=mp3)
 if /i "%audioCodec%" equ "ac3" (set codecLibrary=ac3
 set audioExtension=ac3)
+if /i "%audioCodec%" equ "copy" (set codecLibrary=copy
+set audioExtension=mkv)
 if /i "%encodeAudio%" neq "true" (set codecLibrary=copy
 set audioExtension=mkv)
 
@@ -150,8 +155,8 @@ if /i "%resolution%" neq "other" set outputname_noext=%outputname_noext%.%qualit
 if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4%"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an copy "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an copy -vf scale=%resolution% "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an -sn copy "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an -sn copy -vf scale=%resolution% "%outputname_noext%.mp4"
 goto postFFmpegEncode
 
 :ffmpegH265
@@ -196,22 +201,26 @@ goto afterVideoPipeH265
 "%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
-if exist "%outputname_noext%.%preferredContainer%" del "%outputname_noext%.%preferredContainer%"
+::encode audio, will dump the first audio stream (encoded/copied as specified) to "%inputname%.%audioExtension%"
+if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
+call :encodeAudioFunct "%inputname%"
 
-::::if prefered container is mkv, then use mkvmerge to copy the video stream and the audio streams, and the source file
-"%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video --no-audio "%inputname%" "%outputname_noext%.%codec%" "%outputname_noext%.aac"
-del "%outputname_noext%.aac"
-"%mkvMergeExe%" --output "%outputname_noext%.mkv" --no-video "%inputname%" "%outputname_noext%.%codec%"
+::use mkvmerge to copy the video stream and the audio streams, and the source file
+::do not use ffmpeg for the initial muxing, it doesn't handle raw h264/h265 file streams well, instead mux again later to mp4 if requested
+if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
+"%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.%codec%" --no-video --no-buttons --no-attachments "%inputname%.%audioExtension%" --no-video --no-audio "%inputname%"
 
-::if prefered container is mp4, then use ffmpeg to copy the video stream and the audio streams
+::if preferred container is mp4, then use ffmpeg to copy the video stream and the audio streams
+if /i "%preferredContainer%" equ "mp4" if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mp4" ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy "%outputname_noext%.mp4"
 
 
 ::cleanup
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
+if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
+if /i "%preferredContainer%" equ "mp4" if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 
-if /i "%preferredContainer%" neq "mkv" ffmpeg -i "%outputname_noext%.mkv" -vcodec copy -acodec copy "%outputname_noext%.mp4"
-if /i "%preferredContainer%" neq "mkv" if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 goto end
 
 
@@ -231,7 +240,7 @@ dir /b *.h264 >> %tempfile% 2>nul
 dir /b *.h265 >> %tempfile% 2>nul
 dir /b *.avc >> %tempfile% 2>nul
 
-for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 >> temp.cmd
+for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 >> temp.cmd
 
 if exist "%tempfile%" del "%tempfile%"
 type temp.cmd
@@ -246,7 +255,7 @@ goto end
 :encodeAudioFunct
 set audioInput=%~1
 
-ffmpeg -sn -vn -i "%audioInput%" -c:a aac -b:a %audioBitrate%k "%audioInput%.%audioExtension%"   
+ffmpeg -i "%audioInput%" -vn -sn -c:a %codecLibrary% -b:a %audioBitrate%k "%audioInput%.%audioExtension%"   
 
 goto :eof
 
@@ -257,7 +266,8 @@ echo   Dependencies: ffmpeg.exe, mkvmerge.exe
 echo   For 10Bit Support: x264-10.exe, x265-10.exe, ~50GB HD space
 echo   For 12Bit Support: x264-12.exe, x265-12.exe, ~50GB HD space
 echo   Syntax:
-echo   vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {resolution} {chroma}
+echo   vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {res} {chroma} {acodec}
+echo   {} is optional, Double quotes "" means "use the default value"
 echo   Examples:
 echo   vEncode myfile.mkv
 echo   vEncode "my file.mkv" h264
@@ -270,6 +280,9 @@ echo   vEncode file.mkv h265 "" slow 8 720p
 echo   vEncode file.mkv h264 "" slow 8 480p yuv420p
 echo   vEncode file.mkv h265 20 slow 10 "" yuv422p
 echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p
+echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p opus
+echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p copy
+echo   vEncode file.mkv "" "" slow "" 720p "" ac3
 echo.
 echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (h265)
@@ -278,9 +291,10 @@ echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 echo   Bit depth: 8, 10 or 12, (10)
 echo   Resolution: 480p, 720p, 1080p, (n/a)
 echo   PixelFormat: yuv420p, yuv422p, yuv444p, (yuv422p)
+echo   AudioCodecs: opus, vorbis, aac, mp3, ac3, copy (opus)
 echo.
 echo   To encode all video files in a directory:
-echo   vEncode * h265 18 veryslow 10 "" yuv422p
+echo   vEncode * h265 18 veryslow 10 "" yuv422p opus
 :end
-if exist "%tempdir%" rmdir /s /q "%tempdir%"
+::if exist "%tempdir%" rmdir /s /q "%tempdir%"
 endlocal
