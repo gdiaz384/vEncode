@@ -3,7 +3,9 @@ setlocal enabledelayedexpansion
 
 if /i "%~1" equ "?" goto usageHelp
 if /i "%~1" equ "/?" goto usageHelp
-if /i "%~1" equ "" (set default_flag=true) else (set default_flag=false)
+if /i "%~1" equ "" goto usageHelp
+if not exist "%~1" (echo   "%cd%\%~1" does not exist
+goto end)
 
 set default_audioCodec=opus
 ::opus, vorbis, aac, mp3, ac3
@@ -12,16 +14,18 @@ set default_audioBitrate=192
 ::128, 160, 192, 224, 320
 
 set maxNumberOfAudioTracks=all
-::1,2,3,all
+::1,2,3,4,all
 
 set cleanupAudioTracks=true
 
-::1) read input and validate
-::maybe a UI: "would you like to 1) encode everything as default codec, 2) change codec, 3) exit"
-::2) find all video files in the current directory
-::3) for each one extract out the audio in the specified format
-::4) use mkvmerge to merge the contents of the original but with no video
-::todo, figure out how to work with (convert and remerge) files that have multiple audio tracks
+::1) set defaults
+::2) read input 
+::3) validate input
+::4) switch to batch mode if appropriate
+::5) find all files in the current directory -batch
+::6) for each one extract out the audio in the specified format -batch
+::7) extract out audio from file -non batch mode
+::8) use mkvmerge to merge the contents of the original but with no video
 
 if /i "%processor_Architecture%" equ "x86" set architecture=x86
 if /i "%processor_Architecture%" equ "amd64" set architecture=x64
@@ -35,14 +39,19 @@ set ffprobeexe=%exePath%\bin\%architecture%\ffprobe.exe
 set mkvMergeExe=%exePath%\bin\%architecture%\mkvmerge.exe
 
 ::1) read input and validate
-if /i "%~1" equ "" (set audioCodec=%default_audioCodec%) else (set audioCodec=%~1)
+set inputFile=%~1
 
-if /i "%~2" equ "" (set audioBitrate=%default_audioBitrate%) else (set audioBitrate=%~2)
+if /i "%~2" equ "" (set audioCodec=%default_audioCodec%) else (set audioCodec=%~2)
+
+if /i "%~3" equ "" (set audioBitrate=%default_audioBitrate%) else (set audioBitrate=%~3)
 
 if /i "%audioCodec%" neq "opus" if /i "%audioCodec%" neq "libopus" if /i "%audioCodec%" neq "vorbis" if /i "%audioCodec%" neq "libvorbis" if /i "%audioCodec%" neq "aac" if /i "%audioCodec%" neq "libfdk_aac" if /i "%audioCodec%" neq "mp3" if /i "%audioCodec%" neq "libmp3lame" if /i "%audioCodec%" neq "ac3" (echo   unsupported codec: "%audioCodec%" Using "%default_audioCodec%" instead.
 set audioCodec=%default_audioCodec%)
 
 ::validate input
+set batchmode=false
+if /i "%inputFile%" equ "*" set batchmode=true
+
 if /i "%audioCodec%" equ "opus" (set codecLibrary=libopus
 set audioExtension=opus)
 if /i "%audioCodec%" equ "libopus" (set codecLibrary=libopus
@@ -65,20 +74,14 @@ set audioExtension=ac3)
 if /i "%audioBitrate%" neq "96" if /i "%audioBitrate%" neq "128" if /i "%audioBitrate%" neq "160" if /i "%audioBitrate%" neq "192" if /i "%audioBitrate%" neq "224" if /i "%audioBitrate%" neq "320" (echo unrecognized bitrate "%audioBitrate%" (echo Using default of "%default_audioBitrate%" instead
 set audioBitrate=%default_audioBitrate%)
 
-if /i "%default_flag%" neq "true" goto continue
-echo.
-echo   aEncode will now encode video files found in 
-echo   "%cd%"
-echo   into "%audioCodec%" format. Continue? y/n
-echo.
-set /p input=
-if /i "%input%" equ "1" goto continue
-if /i "%input%" equ "y" goto continue
-if /i "%input%" equ "ye" goto continue
-if /i "%input%" equ "yes" goto continue
-goto usageHelp
-:continue
+if /i "%batchmode%" equ "true" goto directoryMode
 
+call :extractAudio "%inputFile%"
+call :mergeVideo "%inputFile%"
+
+goto end
+
+:directoryMode
 set tempfile=temp.txt
 if exist "%tempfile%" del "%tempfile%"
 set tempffprobeFile=tempaudio.txt
@@ -92,6 +95,12 @@ dir /b *.webm >> %tempfile% 2>nul
 dir /b *.flv >> %tempfile% 2>nul
 dir /b *.avi >> %tempfile% 2>nul
 dir /b *.ogg >> %tempfile% 2>nul
+
+dir /b *.opus >> %tempfile% 2>nul
+dir /b *.aac >> %tempfile% 2>nul
+dir /b *.mp3 >> %tempfile% 2>nul
+dir /b *.ac3 >> %tempfile% 2>nul
+dir /b *.flac >> %tempfile% 2>nul
 
 set fileCount=1
 for /f "tokens=*" %%i in (%tempfile%) do (
@@ -117,6 +126,8 @@ goto end
 :extractAudio
 if /i "%~1" equ "" (echo error 
 goto :eof)
+set audioOnlyFile=false
+set inputFileExtension=%~x1
 
 ::figure out how many streams the audio has
 "%ffprobeexe%" -v error -select_streams a -show_entries stream=codec_name -of default=noprint_wrappers=1 "%~1" > %tempffprobeFile%
@@ -149,18 +160,23 @@ for /L %%i in (0,1,%currentAudioStreamCount%) do (del "%~1.audio%%i.%audioExtens
 goto :eof
 
 :usageHelp
-echo   "aEncode" batch encodes the audio of a folder of video files
-echo   Supported codecs: into opus, vorbis, aac, mp3, ac3) formats
-echo   The output is a Matroska container (mkv) with video and audio
+echo   "aEncode" encodes audio with different codecs
+echo   For files with both video/audio, output is in Matroska containers.
+echo.
 echo   Dependencies: ffmpeg.exe, ffprobe.exe, mkvmerge.exe
 echo   Syntax:
-echo   aEncode {audioCodec} {audioBitrate}
+echo   aEncode myfile.mp4 {audioCodec} {audioBitrate}
 echo   Examples:
-echo   aEncode
-echo   aEncode opus
-echo   aEncode aac
-echo   aEncode opus 192
-goto end
+echo   aEncode myfile.mp4
+echo   aEncode myfile.mp4 opus
+echo   aEncode myfile.mp4 mp3 192
+echo.
+echo   Suggested values and (defaults):
+echo   Codec: opus, vorbis, aac, mp3, ac3
+echo   Bitrate: 92, 128, 160, 192, 224,320
+echo.
+echo   To encode all media files in a directory:
+echo   aEncode * opus 192
 
 
 :end
