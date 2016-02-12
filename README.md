@@ -1,6 +1,8 @@
 # vEncode
 
-vEncode is a windows batch script to encode video into h264/h265
+vEncode.bat is a windows script that encodes video into h264/h265
+
+aEncode.bat, a companion script, supports batch multi-audio track encoding
 
 The development emphasis is on zero-configuration "just works" software.
 
@@ -8,15 +10,15 @@ The development emphasis is on zero-configuration "just works" software.
 
 - Easy to use
 - Scripting friendly
-- H264/H265 support
+- H264/H265/Opus support
 - Supports using the latest versions of key tools (ffmpeg, x264, x265, mkvmerge)
-- Supports changing key encode options crf/preset/bit-depth/chroma/resolutions
+- Supports changing key encode options crf/resolution/preset/bit-depth/chroma
 - Automatically place encoded video into Matroska (mkv) or standard MPEG (mp4) containers
-- Easily change the default encode settings
+- Easily change the default encode settings both in the script and at runtime
 
 ## Basic Usage Guide:
 
-1. copy the folder to somewhere such that vEncode.bat is in your enviornmental path
+1. copy the folder somewhere such that vEncode.bat is in the environmental path
 2. open a command prompt
 3. navigate using the CLI to the directory that has the file to encode
 4. vEncode myfile.mp4 h265
@@ -24,50 +26,89 @@ The development emphasis is on zero-configuration "just works" software.
 
 ## Release Notes:
 
-1. Intended use case is to set lots of videos to encode and come back later to do the audio (gMKVExtractGUI/audacity), subs (Aegisub) and fix the metainfo (mkvmerge-gui).
-2. If downloading from github manually (instead of using an offical release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
-3. 8-bit encodes can use either ffmpeg.exe or h264-8.exe/h265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
-4. Until I figure out how to pipe stuff in Windows (unlikely), encoding temporarily requires lots of free HD space. If this is an issue, use ffmpeg for the encodes. Note that ffmpeg only supports 8-bit depth for h264/h265.
-5. The 10-bit x264 encoder does not appear to honor different chroma values and always uses yuv420p.
-6. The 12-bit x265 encoder doesn't seem to like yuv444p.
-7. h265 encoding using yuv444p is the same size as yuv420p so wondering if x265 automatically subsamples the chroma to yuv420p if it detects yuv444p. Issue? does not occur when using yuv422p or h264.
-7. The following OS architecture chart lists the default compatability of the provided binaries (mid Jan 2016) with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
+- Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub) and fix the metainfo (mkvmerge-gui).
+- If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
+- 8-bit encodes can use either ffmpeg.exe or h264-8.exe/h265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
+- Until I figure out how to pipe stuff in Windows (unlikely), encoding temporarily requires lots of free HD space. If this is an issue, use ffmpeg for the encodes. Note that ffmpeg only supports 8-bit depth for h264/h265.
+- The following OS architecture chart lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
 
 ![screenshot1](misc/BitDepthCompatability.png)
 
 ## Example Usage:
 ```
-vEncode myfile.mp4 {h264/h265} {crf} {preset} {bitdepth} {res} {chroma}
+vEncode Syntax:
+vEncode myfile.mp4 {h264/h265} {resolution} {crf} {audio codec} {preset} {bit-depth} {chroma}
+Note1: order is important
+Note2: {} is optional
+Note3: Double quotes "" means "use the default value"
+
 Examples:
 vEncode myfile.mkv
 vEncode "my file.mkv" h264
 vEncode "my file.mkv" h265
-vEncode file.mkv h264 20
-vEncode file.mkv "" 20
-vEncode file.mkv "" 20 veryslow
-vEncode file.mkv h265 20 slow 8
-vEncode file.mkv h265 "" slow 8 720p
-vEncode file.mkv h264 "" slow 8 480p yuv420p
-vEncode file.mkv h265 20 slow 10 "" yuv422p
-vEncode file.mkv h265 18 veryslow 12 1080p yuv444p
+vEncode file.mkv h264
+vEncode file.mkv "" 720p
+vEncode file.mkv "" 720p 20
+vEncode file.mkv h264 1080p 20
+vEncode file.mkv h265 1080p 20 opus
+vEncode file.mkv h264 1080p 20 aac veryslow
+vEncode file.mkv h265 480p 20 opus veryslow
+vEncode file.mkv h265 "" 18 opus veryslow
+vEncode file.mkv h265 720p 18 opus veryslow 10
+vEncode file.mkv h264 720p 16 aac veryslow 10 420
+vEncode file.mkv h265 720p 18 opus slow 10 444
+vEncode file.mkv h264 1080p 16 copy slow 10 420
+vEncode file.mkv h265 720p 18 opus slow 10 444
+vEncode file.mkv h265 "" "" opus "" "" 420
 
-Suggested Values and Defaults:
+Suggested values and (defaults):
 Codec: h264, h265, (h265)
+Resolution: 480p, 720p, 1080p, (n/a)
 CRF values: usually 16-28, (18)
+AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 Bit depth: 8, 10 or 12, (10)
-Resolution: 480p, 720p, 1080p, (n/a)
-PixelFormat: yuv420p, yuv422p, yuv444p, (yuv422p)
+YUV Pixel Format: 420, 422, 444, (444)
+Note: Enter "" for a value to use the default value.
+
+To encode all video files in a directory:
+vEncode * h265 "" 18 copy veryslow 12 420
+vEncode * h265 720p 18 opus veryslow 10 444
 
 To encode all video files in a directory:
 vEncode * h265 18 veryslow 10 "" yuv422p
 ```
 
+```
+aEncode Syntax:
+aEncode myfile.mp4 {audioCodec} {audioBitrate} {volumeLevel}
+
+Examples:
+aEncode myfile.mp4
+aEncode myfile.mp4 opus
+aEncode myfile.mp4 mp3 192
+aEncode myfile.mp4 opus 320 1
+aEncode myfile.mp4 opus 320 3.5
+
+Suggested values and (defaults):
+Codec: opus, vorbis, aac, mp3, ac3
+Bitrate: 96, 128, 160, 192, 224,320
+VolumeLevel: 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0
+
+To encode all media files in a directory:
+aEncode *
+aEncode * opus
+aEncode * opus 192
+aEncode * opus 192 2.5
+```
+
 ## Dependencies: 
 ```
 Basic: ffmpeg.exe, mkvmerge.exe
-For 10Bit Support: x264-10.exe, x265-10.exe, ~50GB HD space
-For 12Bit Support: x264-12.exe, x265-12.exe, ~50GB HD space
+(optional) For native x264/x265 8-bit support: x264-8.exe, x265-8.exe, ~5-200GB HD space
+For 10-bit support: x264-10.exe, x265-10.exe, ~5-200GB HD space
+For 12-bit support: x264-12.exe, x265-12.exe, ~5-200GB HD space
+aEncode.bat requires ffprobe.exe
 ```
 
 ## Download:

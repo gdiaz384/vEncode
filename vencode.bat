@@ -29,9 +29,9 @@ set default_bitDepth=10
 ::8, 10, 12
 set default_quality=other
 ::480p, 720p, 1080p, other
-set default_chroma=yuv422p
-::yuv420p, yuv422p, yuv444p
-set useFFmpegFor8BitEncodes=false
+set default_chroma=444
+::420, 422, 444
+set useFFmpegFor8BitEncodes=true
 ::true, false
 
 set encodeAudio=true
@@ -63,59 +63,70 @@ set inputVideo_Extension=%~x1
 
 if /i "%~2" equ "" (set codec=%default_codec%) else (set codec=%~2)
 
-if /i "%~3" equ "" (set crfValue=%default_crfValue%) else (set crfValue=%~3)
-
-if /i "%~4" equ "" (set preset=%default_preset%) else (set preset=%~4)
-
-if /i "%~5" equ "" (set bitDepth=%default_bitDepth%) else (set bitDepth=%~5)
-
-if /i "%~6" equ "" (set quality=%default_quality%) else (set quality=%~6)
+if /i "%~3" equ "" (set quality=%default_quality%) else (set quality=%~3)
 set resolution=other
 if /i "%quality%" equ "1080p" (set resolution=1920x1080)
 if /i "%quality%" equ "720p" (set resolution=1280x720)
 if /i "%quality%" equ "480p" (set resolution=854x480)
 
-if /i "%~7" equ "" (set chroma=%default_chroma%) else (set chroma=%~7)
+if /i "%~4" equ "" (set crfValue=%default_crfValue%) else (set crfValue=%~4)
 
-if /i "%~8" equ "" (set audioCodec=%default_audioCodec%) else (
-set audioCodec=%~8
+if /i "%~5" equ "" (set audioCodec=%default_audioCodec%) else (
+set audioCodec=%~5
 set encodeAudio=true
 )
 
+if /i "%~6" equ "" (set preset=%default_preset%) else (set preset=%~6)
 
+if /i "%~7" equ "" (set bitDepth=%default_bitDepth%) else (set bitDepth=%~7)
+
+if /i "%~8" equ "" (set chroma=%default_chroma%) else (set chroma=%~8)
+
+
+::echo   vEncode * h265 720p 18 opus veryslow 10 422
 ::3) validate input
 if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsupported, Supported codecs: h264, h265
-goto end)
-
-if /i %crfValue% lss 0 (echo   crfValue "%crfValue%" not valid, must be greater than or = 0
-goto end)
-if /i %crfValue% gtr 51 (echo   crfValue "%crfValue%" not valid, must be less than 52
-goto end)
-
-if /i "%preset%" neq "ultrafast" if /i "%preset%" neq "superfast" if /i "%preset%" neq "veryfast" if /i "%preset%" neq "faster" if /i "%preset%" neq "fast" if /i "%preset%" neq "medium" if /i "%preset%" neq "slow" if /i "%preset%" neq "slower" if /i "%preset%" neq "veryslow" if /i "%preset%" neq "placebo" (echo preset "%preset%" unsupported, Supported presets: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow, placebo
+echo   Known values: h264, h265
 goto usageHelp)
 
-if /i "%bitDepth%" neq "8" if /i "%bitDepth%" neq "10" if /i "%bitDepth%" neq "12" (echo   bit depth %bitDepth% not supported: 8,10,12 only
-goto end)
-
 if /i "%resolution%" neq "other" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "854x480" (echo resolution "%~4" not supported, defaulting to input video size
+echo   Known values: other, 1920x1080, 1280x720, 854x480
 set resolution=other
 set quality=other)
 
 if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" (echo  quality unrecognized, using source's resolution instead
+echo   Known values: other, 480p, 720p, 1080p
 set resolution=other
 set quality=other)
 
-if /i "%chroma%" neq "yuv420p" if /i "%chroma%" neq "yuv422p" if /i "%chroma%" neq "yuv444p" (echo   Warning: chroma "%chroma%" unrecognized
-echo     Known values: yuv420p, yuv422p, yuv444p)
+if /i %crfValue% lss 0 (echo   crfValue "%crfValue%" not valid, must be greater than or = 0
+goto usageHelp)
+if /i %crfValue% gtr 51 (echo   crfValue "%crfValue%" not valid, must be less than 52
+goto usageHelp)
 
-::There might be options specified that are incompatible together (such as 10/12 bit h264 and non yuv420p chromas)
+if /i "%preset%" neq "ultrafast" if /i "%preset%" neq "superfast" if /i "%preset%" neq "veryfast" if /i "%preset%" neq "faster" if /i "%preset%" neq "fast" if /i "%preset%" neq "medium" if /i "%preset%" neq "slow" if /i "%preset%" neq "slower" if /i "%preset%" neq "veryslow" if /i "%preset%" neq "placebo" (echo    preset "%preset%" unsupported
+echo    Supported presets: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow, placebo
+goto usageHelp)
+
+if /i "%bitDepth%" neq "8" if /i "%bitDepth%" neq "10" if /i "%bitDepth%" neq "12" (echo   bit depth %bitDepth% not supported
+echo   Known values: 8,10,12
+goto usageHelp)
+
+if /i "%chroma%" neq "420" if /i "%chroma%" neq "422" if /i "%chroma%" neq "444" (echo   Warning: chroma "%chroma%" unrecognized
+echo     Known values: 420, 422, 444
+echo     defaulting to %default_chroma%
+set chroma=%default_chroma%)
+
+
+::There are options specified that are not really compatible together such as:
+::12-bit h264
+::yuv444p chroma h265
 
 ::opus/vorbis audio are incompatible with mp4 container, default to mkv instead
 if /i "%audioCodec%" equ "opus" set preferredContainer=mkv
 if /i "%audioCodec%" equ "vorbis" set preferredContainer=mkv
 ::could also use ffprobe to discover the audio format to see if it's compatible with mp4
-::instead of blindly assuming it's not
+::instead of blindly assuming it is not compatible
 if /i "%audioCodec%" equ "copy" set preferredContainer=mkv
 
 if /i "%audioCodec%" equ "opus" (set codecLibrary=libopus
@@ -155,22 +166,31 @@ if /i "%resolution%" neq "other" set outputname_noext=%outputname_noext%.%qualit
 if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4%"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an -sn copy "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an -sn copy -vf scale=%resolution% "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf scale=%resolution% "%outputname_noext%.mp4"
 goto postFFmpegEncode
 
 :ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
 
 :postFFmpegEncode
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt %chroma% -preset %preset% -crf %crfValue% -an "%outputname_noext%.mkv"
 
+::encode audio, will dump the first audio stream (encoded/copied as specified) to "%inputname%.%audioExtension%"
 call :encodeAudioFunct "%inputname%"
 
-if /i "%preferredContainer%" equ "mkv" "%mkvMergeExe%" --output "%outputname_noext%".mkv "%outputname_noext%.mp4"
+::merge audio and video into one file
+::do not use ffmpeg for the initial muxing, it doesn't handle raw aac files well, instead mux again later to mp4 if requested
+"%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.mp4" --no-video --no-buttons --no-attachments "%inputname%.%audioExtension%" --no-video --no-audio "%inputname%"
+if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
 
-if /i "%preferredContainer%" equ "mkv" if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
+::if preferred container is mp4, then use ffmpeg to copy the video stream and the audio streams
+if /i "%preferredContainer%" equ "mp4" ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy "%outputname_noext%.mp4"
+
+::cleanup
+if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
+if /i "%preferredContainer%" equ "mp4" if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
+
 goto end
 
 
@@ -190,14 +210,16 @@ goto end)
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
 
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt %chroma% "%outputname_noext%.y4m"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -vf scale=%resolution% -pix_fmt %chroma% "%outputname_noext%.y4m"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -vf scale=%resolution% -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
 
-::h264 and h265 use different syntaxes
+::x264.exe and x265.exe use different syntaxes
 if /i "%codec%" equ "h265" goto videoPipeH265
-"%encodeExe%" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%" "%outputname_noext%.y4m"
+::x264 chroma needs to be specified with --output-csp i422
+"%encodeExe%" --crf %crfValue% --output-csp i%chroma% --preset %preset% --output "%outputname_noext%.%codec%" "%outputname_noext%.y4m"
 goto afterVideoPipeH265
 :videoPipeH265
+::x265 will honor the input chroma automatically (but mess with some quality values if yuv444p chrome is specified)
 "%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
@@ -254,47 +276,50 @@ goto end
 ::takes a filesource %1 as an input
 :encodeAudioFunct
 set audioInput=%~1
-
-ffmpeg -i "%audioInput%" -vn -sn -c:a %codecLibrary% -b:a %audioBitrate%k "%audioInput%.%audioExtension%"   
-
+ffmpeg -i "%audioInput%" -vn -sn -c:a %codecLibrary% -b:a %audioBitrate%k "%audioInput%.%audioExtension%"
 goto :eof
 
-::defaults h264, 720p, "slow" quality
+
 :usageHelp
 echo   "vEncode" encodes an existing file into h264/h265 formats
 echo   Dependencies: ffmpeg.exe, mkvmerge.exe
-echo   For 10Bit Support: x264-10.exe, x265-10.exe, ~50GB HD space
-echo   For 12Bit Support: x264-12.exe, x265-12.exe, ~50GB HD space
+echo   For 10Bit Support: x264-10.exe, x265-10.exe, ~5-200GB HD space
+echo   For 12Bit Support: x264-12.exe, x265-12.exe, ~5-200GB HD space
 echo   Syntax:
-echo   vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {res} {chroma} {acodec}
-echo   {} is optional, Double quotes "" means "use the default value"
+echo   vEncode myfile.mp4 {h264/h265} {res} {crf} {acodec} {preset} {btdph} {chroma}
+echo   order is impt, {} is optional, Double quotes "" means "use the default value"
 echo   Examples:
 echo   vEncode myfile.mkv
 echo   vEncode "my file.mkv" h264
 echo   vEncode "my file.mkv" h265
-echo   vEncode file.mkv h264 20
-echo   vEncode file.mkv "" 20
-echo   vEncode file.mkv "" 20 veryslow
-echo   vEncode file.mkv h265 20 slow 8
-echo   vEncode file.mkv h265 "" slow 8 720p
-echo   vEncode file.mkv h264 "" slow 8 480p yuv420p
-echo   vEncode file.mkv h265 20 slow 10 "" yuv422p
-echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p
-echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p opus
-echo   vEncode file.mkv h265 18 veryslow 12 1080p yuv444p copy
-echo   vEncode file.mkv "" "" slow "" 720p "" ac3
+echo   vEncode file.mkv h264
+echo   vEncode file.mkv "" 720p
+echo   vEncode file.mkv "" 720p 20
+echo   vEncode file.mkv h264 1080p 20
+echo   vEncode file.mkv h265 1080p 20 opus
+echo   vEncode file.mkv h264 1080p 20 aac veryslow
+echo   vEncode file.mkv h265 480p 20 opus veryslow
+echo   vEncode file.mkv h265 "" 18 opus veryslow
+echo   vEncode file.mkv h265 720p 18 opus veryslow 10
+echo   vEncode file.mkv h264 720p 16 aac veryslow 10 420
+echo   vEncode file.mkv h265 720p 18 opus slow 10 444
+echo   vEncode file.mkv h264 1080p 16 copy slow 10 420
+echo   vEncode file.mkv h265 720p 18 opus slow 10 444
+echo   vEncode file.mkv h265 "" "" opus "" "" 420
 echo.
 echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (h265)
+echo   Resolution: 480p, 720p, 1080p, (n/a)
 echo   CRF values: usually 16-28, (18)
+echo   AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 echo   Bit depth: 8, 10 or 12, (10)
-echo   Resolution: 480p, 720p, 1080p, (n/a)
-echo   PixelFormat: yuv420p, yuv422p, yuv444p, (yuv422p)
-echo   AudioCodecs: opus, vorbis, aac, mp3, ac3, copy (opus)
+echo   YUV Pixel Format: 420, 422, 444, (444)
+echo   Note: Enter "" for a value to use the default value.
 echo.
 echo   To encode all video files in a directory:
-echo   vEncode * h265 18 veryslow 10 "" yuv422p opus
+echo   vEncode * h265 "" 18 copy veryslow 12 420
+echo   vEncode * h265 720p 18 opus veryslow 10 444
 :end
 ::if exist "%tempdir%" rmdir /s /q "%tempdir%"
 endlocal
