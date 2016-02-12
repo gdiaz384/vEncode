@@ -1,8 +1,8 @@
 # vEncode
 
-vEncode.bat is a windows script that encodes video into h264/h265
+vEncode.bat is a windows script that encodes video into h264/h265.
 
-aEncode.bat, a companion script, supports batch multi-audio track encoding
+aEncode.bat, a companion script, supports batch multi-audio track encoding.
 
 The development emphasis is on zero-configuration "just works" software.
 
@@ -28,8 +28,8 @@ The development emphasis is on zero-configuration "just works" software.
 
 - Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub) and fix the metainfo (mkvmerge-gui).
 - If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
-- 8-bit encodes can use either ffmpeg.exe or h264-8.exe/h265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
-- Until I figure out how to pipe stuff in Windows (unlikely), encoding temporarily requires lots of free HD space. If this is an issue, use ffmpeg for the encodes. Note that ffmpeg only supports 8-bit depth for h264/h265.
+- 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
+- Until I figure out how to pipe a .y4m video stream into x264.exe/x265.exe (unlikely), encoding temporarily requires lots of free HD space. If this is an issue, use ffmpeg for the encodes. Note that ffmpeg only supports 8-bit depth for h264/h265.
 - The following OS architecture chart lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
 
 ![screenshot1](misc/BitDepthCompatability.png)
@@ -74,9 +74,6 @@ Note: Enter "" for a value to use the default value.
 To encode all video files in a directory:
 vEncode * h265 "" 18 copy veryslow 12 420
 vEncode * h265 720p 18 opus veryslow 10 444
-
-To encode all video files in a directory:
-vEncode * h265 18 veryslow 10 "" yuv422p
 ```
 
 ```
@@ -105,7 +102,7 @@ aEncode * opus 192 2.5
 ## Dependencies: 
 ```
 Basic: ffmpeg.exe, mkvmerge.exe
-(optional) For native x264/x265 8-bit support: x264-8.exe, x265-8.exe, ~5-200GB HD space
+(optional) For native h264/h265 8-bit support: x264-8.exe, x265-8.exe, ~5-200GB HD space
 For 10-bit support: x264-10.exe, x265-10.exe, ~5-200GB HD space
 For 12-bit support: x264-12.exe, x265-12.exe, ~5-200GB HD space
 aEncode.bat requires ffprobe.exe
