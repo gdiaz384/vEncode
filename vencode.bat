@@ -41,7 +41,7 @@ set default_audioCodec=opus
 set audioBitrate=192
 ::128,192,224,320
 
-set preferredContainer=mp4
+set preferredContainer=mkv
 ::mkv, mp4
 
 if /i "%processor_Architecture%" equ "x86" set architecture=x86
@@ -65,6 +65,7 @@ if /i "%~2" equ "" (set codec=%default_codec%) else (set codec=%~2)
 
 if /i "%~3" equ "" (set quality=%default_quality%) else (set quality=%~3)
 set resolution=other
+if /i "%quality%" equ "4k" (set resolution=3840x2160)
 if /i "%quality%" equ "1080p" (set resolution=1920x1080)
 if /i "%quality%" equ "720p" (set resolution=1280x720)
 if /i "%quality%" equ "480p" (set resolution=854x480)
@@ -89,13 +90,13 @@ if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsu
 echo   Known values: h264, h265
 goto usageHelp)
 
-if /i "%resolution%" neq "other" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "854x480" (echo resolution "%~4" not supported, defaulting to input video size
-echo   Known values: other, 1920x1080, 1280x720, 854x480
+if /i "%resolution%" neq "other" if /i "%resolution%" neq "854x480" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "3840x2160" (echo resolution "%~4" not supported, defaulting to input video size
+echo   Known values: other, 854x480,, 1280x720, 1920x1080, 3840x2160
 set resolution=other
 set quality=other)
 
-if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" (echo  quality unrecognized, using source's resolution instead
-echo   Known values: other, 480p, 720p, 1080p
+if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" if /i "%quality%" neq "4k" (echo  quality unrecognized, using source's resolution instead
+echo   Known values: other, 480p, 720p, 1080p, 4k
 set resolution=other
 set quality=other)
 
@@ -120,7 +121,7 @@ set chroma=%default_chroma%)
 
 ::There are options specified that are not really compatible together such as:
 ::12-bit h264
-::yuv444p chroma h265
+::12-bit h265 with yuv444p
 
 ::opus/vorbis audio are incompatible with mp4 container, default to mkv instead
 if /i "%audioCodec%" equ "opus" set preferredContainer=mkv
@@ -166,13 +167,13 @@ if /i "%resolution%" neq "other" set outputname_noext=%outputname_noext%.%qualit
 if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4%"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf scale=%resolution% "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf yadif,fps=24000/1001 "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf yadif,fps=24000/1001,scale=%resolution% "%outputname_noext%.mp4"
 goto postFFmpegEncode
 
 :ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -vf scale=%resolution% -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf yadif,fps=24000/1001 "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf yadif,fps=24000/1001,scale=%resolution% "%outputname_noext%.mp4"
 
 :postFFmpegEncode
 
@@ -211,7 +212,7 @@ if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
 
 if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -vf scale=%resolution% -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -vf yadif,fps=24000/1001,scale=%resolution% -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
 
 ::x264.exe and x265.exe use different syntaxes
 if /i "%codec%" equ "h265" goto videoPipeH265
@@ -309,7 +310,7 @@ echo   vEncode file.mkv h265 "" "" opus "" "" 420
 echo.
 echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (h265)
-echo   Resolution: 480p, 720p, 1080p, (n/a)
+echo   Resolution: 480p, 720p, 1080p, 4k (n/a)
 echo   CRF values: usually 16-28, (18)
 echo   AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)

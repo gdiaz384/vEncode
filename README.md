@@ -63,7 +63,7 @@ vEncode file.mkv h265 "" "" opus "" "" 420
 
 Suggested values and (defaults):
 Codec: h264, h265, (h265)
-Resolution: 480p, 720p, 1080p, (n/a)
+Resolution: 480p, 720p, 1080p, 4k (n/a)
 CRF values: usually 16-28, (18)
 AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)

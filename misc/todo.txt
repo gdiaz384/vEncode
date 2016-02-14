@@ -2,8 +2,19 @@ Todo:
 :vencode:
 Quality: test on 32-bit OS systems
 Rewrite: vEncode.bat should support multi-track audio natively.
-Bug/Rewrite: when copying audio, check to see if it's mp4 compatible using ffprobe.exe (increases dependencies)
+Rewrite/Bug: when copying audio, check to see if it's mp4 compatible using ffprobe.exe (increases dependencies)
 Bug: Figure out why h265 12-bit yuv444p doesn't work.
 Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -won't fix
 
 :aencode:
+Rewrite/Bug: Should preserve language if one was specified for Matroska containers
+
+When using x265.exe, why does yuv444p produce smaller file sizes than yuv422p, on par with yuv420p?
+Code: "In 444, chroma gets twice as much resolution, so halve quality when psy-rd is enabled" p->cbqpOffset +=6;
+Reason: "This is primarily a visual quality improvement/psy-rd hack. In 444, since chroma resolution is on par 
+with luma, and our eyes arent very sensitive to chroma, we increase the chroma QP so that those bits can be used 
+up in luma." -Deepthi Nandakumar from Multicore mid-2014
+When using mediainfo this shows up as: cbqpoffs=6 / crqpoffs=6   (instead of cbqpoffs=0 / crqpoffs=0 for yuv420p/yuv422p)
+From: https://mailman.videolan.org/pipermail/x265-devel/2014-June/004647.html
+"x264 already gives +6 to chroma QP offset in 4:4:4 mode. This is completely arbitrary and probably not an ideal choice." -Dark Shikari 2013
+From: http://forum.doom9.org/archive/index.php/t-165415.html
