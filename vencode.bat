@@ -211,17 +211,27 @@ goto end)
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
 
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -vf yadif,fps=24000/1001,scale=%resolution% -pix_fmt yuv%chroma%p "%outputname_noext%.y4m"
+::old way, dump *.y4m stream to feed it to ffmpeg later
+::if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001 "%outputname_noext%.y4m"
+::if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001,scale=%resolution% "%outputname_noext%.y4m"
 
 ::x264.exe and x265.exe use different syntaxes
 if /i "%codec%" equ "h265" goto videoPipeH265
+::old way, feed *.y4m stream to ffmpeg
 ::x264 chroma needs to be specified with --output-csp i422
-"%encodeExe%" --crf %crfValue% --output-csp i%chroma% --preset %preset% --output "%outputname_noext%.%codec%" "%outputname_noext%.y4m"
+::"%encodeExe%" --crf %crfValue% --output-csp i%chroma% --preset %preset% --output "%outputname_noext%.%codec%" "%outputname_noext%.y4m"
+
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001 -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001,scale=%resolution% -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+
 goto afterVideoPipeH265
 :videoPipeH265
+::old way, feed *.y4m stream to ffmpeg
 ::x265 will honor the input chroma automatically (but mess with some quality values if yuv444p chrome is specified)
-"%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+::"%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001 -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001,scale=%resolution% -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
 ::encode audio, will dump the first audio stream (encoded/copied as specified) to "%inputname%.%audioExtension%"

@@ -7,7 +7,9 @@ Bug: Figure out why h265 12-bit yuv444p doesn't work.
 Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -won't fix
 
 :aencode:
-Rewrite/Bug: Should preserve language if one was specified for Matroska containers
+Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for Matroska containers
+
+
 
 When using x265.exe, why does yuv444p produce smaller file sizes than yuv422p, on par with yuv420p?
 Code: "In 444, chroma gets twice as much resolution, so halve quality when psy-rd is enabled" p->cbqpOffset +=6;

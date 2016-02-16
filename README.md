@@ -18,7 +18,7 @@ The development emphasis is on zero-configuration "just works" software.
 
 ## Basic Usage Guide:
 
-1. copy the folder somewhere such that vEncode.bat is in the environmental path
+1. copy the folder somewhere such that vEncode.bat is in %path%
 2. open a command prompt
 3. navigate using the CLI to the directory that has the file to encode
 4. vEncode myfile.mp4 h265
@@ -26,11 +26,10 @@ The development emphasis is on zero-configuration "just works" software.
 
 ## Release Notes:
 
-- Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub) and fix the metainfo (mkvmerge-gui).
+- Intended use case is to set lots of videos to encode and come back later to do the subs (with Aegisub and SubtitleEdit) and fix the metainfo (mkvmerge-gui).
 - If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
 - 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
-- Until I figure out how to pipe a .y4m video stream into x264.exe/x265.exe (unlikely), encoding temporarily requires lots of free HD space. If this is an issue, use ffmpeg for the encodes. Note that ffmpeg only supports 8-bit depth for h264/h265.
-- The following OS architecture chart lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
+- The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
 
 ![screenshot1](misc/BitDepthCompatability.png)
 
