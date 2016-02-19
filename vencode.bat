@@ -21,8 +21,9 @@ set tempdir=%temp%\temp%random%
 
 set default_codec=h265
 ::h264, h265
-set default_crfValue=18
-::16-28
+set default_crfValue=17
+::h264 16-28
+::h265 14-26
 set default_preset=veryslow
 ::ultrafast, veryfast, fast, medium, slow, veryslow, placebo
 set default_bitDepth=10
@@ -66,6 +67,7 @@ if /i "%~2" equ "" (set codec=%default_codec%) else (set codec=%~2)
 if /i "%~3" equ "" (set quality=%default_quality%) else (set quality=%~3)
 set resolution=other
 if /i "%quality%" equ "4k" (set resolution=3840x2160)
+if /i "%quality%" equ "1440p" (set resolution=2560x1440)
 if /i "%quality%" equ "1080p" (set resolution=1920x1080)
 if /i "%quality%" equ "720p" (set resolution=1280x720)
 if /i "%quality%" equ "480p" (set resolution=854x480)
@@ -90,13 +92,13 @@ if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsu
 echo   Known values: h264, h265
 goto usageHelp)
 
-if /i "%resolution%" neq "other" if /i "%resolution%" neq "854x480" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "3840x2160" (echo resolution "%~4" not supported, defaulting to input video size
-echo   Known values: other, 854x480,, 1280x720, 1920x1080, 3840x2160
+if /i "%resolution%" neq "other" if /i "%resolution%" neq "854x480" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "2560x1440" if /i "%resolution%" neq "3840x2160" (echo resolution "%~4" not supported, defaulting to input video size
+echo   Known values: other, 854x480,, 1280x720, 1920x1080, 2560x1440, 3840x2160
 set resolution=other
 set quality=other)
 
-if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" if /i "%quality%" neq "4k" (echo  quality unrecognized, using source's resolution instead
-echo   Known values: other, 480p, 720p, 1080p, 4k
+if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" if /i "%quality%" neq "1440p" if /i "%quality%" neq "4k" (echo  quality unrecognized, using source's resolution instead
+echo   Known values: other, 480p, 720p, 1080p, 1440p, 4k
 set resolution=other
 set quality=other)
 
@@ -294,8 +296,8 @@ goto :eof
 :usageHelp
 echo   "vEncode" encodes an existing file into h264/h265 formats
 echo   Dependencies: ffmpeg.exe, mkvmerge.exe
-echo   For 10Bit Support: x264-10.exe, x265-10.exe, ~5-200GB HD space
-echo   For 12Bit Support: x264-12.exe, x265-12.exe, ~5-200GB HD space
+echo   For 10Bit Support: x264-10.exe, x265-10.exe
+echo   For 12Bit Support: x264-12.exe, x265-12.exe
 echo   Syntax:
 echo   vEncode myfile.mp4 {h264/h265} {res} {crf} {acodec} {preset} {btdph} {chroma}
 echo   order is impt, {} is optional, Double quotes "" means "use the default value"
@@ -320,7 +322,7 @@ echo   vEncode file.mkv h265 "" "" opus "" "" 420
 echo.
 echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (h265)
-echo   Resolution: 480p, 720p, 1080p, 4k (n/a)
+echo   Resolution: 480p, 720p, 1080p, 1440p, 4k (n/a)
 echo   CRF values: usually 16-28, (18)
 echo   AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
@@ -329,8 +331,8 @@ echo   YUV Pixel Format: 420, 422, 444, (444)
 echo   Note: Enter "" for a value to use the default value.
 echo.
 echo   To encode all video files in a directory:
-echo   vEncode * h265 "" 18 copy veryslow 12 420
-echo   vEncode * h265 720p 18 opus veryslow 10 444
+echo   vEncode * h265 "" 17 copy veryslow 12 420
+echo   vEncode * h265 720p 17 opus veryslow 10 444
 :end
 ::if exist "%tempdir%" rmdir /s /q "%tempdir%"
 endlocal

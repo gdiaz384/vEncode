@@ -63,7 +63,7 @@ vEncode file.mkv h265 "" "" opus "" "" 420
 Suggested values and (defaults):
 Codec: h264, h265, (h265)
 Resolution: 480p, 720p, 1080p, 4k (n/a)
-CRF values: usually 16-28, (18)
+CRF values: usually 16-28, (17)
 AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 Bit depth: 8, 10 or 12, (10)
@@ -71,8 +71,8 @@ YUV Pixel Format: 420, 422, 444, (444)
 Note: Enter "" for a value to use the default value.
 
 To encode all video files in a directory:
-vEncode * h265 "" 18 copy veryslow 12 420
-vEncode * h265 720p 18 opus veryslow 10 444
+vEncode * h265 "" 17 copy veryslow 12 420
+vEncode * h265 720p 17 opus veryslow 10 444
 ```
 
 ```
@@ -101,16 +101,16 @@ aEncode * opus 192 2.5
 ## Dependencies: 
 ```
 Basic: ffmpeg.exe, mkvmerge.exe
-(optional) For native h264/h265 8-bit support: x264-8.exe, x265-8.exe, ~5-200GB HD space
-For 10-bit support: x264-10.exe, x265-10.exe, ~5-200GB HD space
-For 12-bit support: x264-12.exe, x265-12.exe, ~5-200GB HD space
+(optional) For native h264/h265 8-bit support: x264-8.exe, x265-8.exe
+For 10-bit support: x264-10.exe, x265-10.exe
+For 12-bit support: x264-12.exe, x265-12.exe
 aEncode.bat requires ffprobe.exe
 ```
 
 ## Download:
 ```
-Latest Version: 1.0.0-beta
-In Development: 1.0.0-rc1
+Latest Version: 1.0.0-rc1
+In Development: 1.0.0-rc2
 ```
 Click [here](//github.com/gdiaz384/vEncode/releases) or on "releases" at the top to download the latest version.
 

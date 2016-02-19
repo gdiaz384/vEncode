@@ -1,5 +1,6 @@
 Todo:
 :vencode:
+Bug: encodes that use x265-8/10/12.exe have incorrect output resolutions, esp 1080p/480p (1.9-r3 and 1.9-r15 tested) -not sure how to fix
 Quality: test on 32-bit OS systems
 Rewrite: vEncode.bat should support multi-track audio natively.
 Rewrite/Bug: when copying audio, check to see if it's mp4 compatible using ffprobe.exe (increases dependencies)
