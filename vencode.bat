@@ -42,7 +42,7 @@ set default_audioCodec=opus
 set audioBitrate=192
 ::128,192,224,320
 
-set preferredContainer=mkv
+set preferredContainer=mp4
 ::mkv, mp4
 
 if /i "%processor_Architecture%" equ "x86" set architecture=x86

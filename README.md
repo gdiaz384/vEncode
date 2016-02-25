@@ -38,7 +38,7 @@ The development emphasis is on zero-configuration "just works" software.
 vEncode Syntax:
 vEncode myfile.mp4 {h264/h265} {resolution} {crf} {audio codec} {preset} {bit-depth} {chroma}
 Note1: order is important
-Note2: {} is optional
+Note2: {} means optional
 Note3: Double quotes "" means "use the default value"
 
 Examples:
@@ -62,7 +62,7 @@ vEncode file.mkv h265 "" "" opus "" "" 420
 
 Suggested values and (defaults):
 Codec: h264, h265, (h265)
-Resolution: 480p, 720p, 1080p, 4k (n/a)
+Resolution: 480p, 720p, 1080p, 1440p, 4k (n/a)
 CRF values: usually 16-28, (17)
 AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
 Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
