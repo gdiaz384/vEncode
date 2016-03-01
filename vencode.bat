@@ -13,7 +13,7 @@ goto end)
 ::2) get inputs
 ::3) validate input
 ::4) encode video (into .mp4 for ffmpeg)
-::5) check if audio need encoding
+::5) check if audio needs encoding
 ::6) merge into final container
 
 ::1) set defaults
@@ -29,10 +29,10 @@ set default_preset=veryslow
 set default_bitDepth=10
 ::8, 10, 12
 set default_quality=other
-::480p, 720p, 1080p, other
+::480p, DVD, 576p, 720p, 1080p, 1440p, 4k, other
 set default_chroma=444
 ::420, 422, 444
-set useFFmpegFor8BitEncodes=true
+set useFFmpegFor8BitEncodes=false
 ::true, false
 
 set encodeAudio=true
@@ -70,14 +70,13 @@ if /i "%quality%" equ "4k" (set resolution=3840x2160)
 if /i "%quality%" equ "1440p" (set resolution=2560x1440)
 if /i "%quality%" equ "1080p" (set resolution=1920x1080)
 if /i "%quality%" equ "720p" (set resolution=1280x720)
+if /i "%quality%" equ "DVD" (set resolution=1024x576)
+if /i "%quality%" equ "576p" (set resolution=1024x576)
 if /i "%quality%" equ "480p" (set resolution=854x480)
 
 if /i "%~4" equ "" (set crfValue=%default_crfValue%) else (set crfValue=%~4)
 
-if /i "%~5" equ "" (set audioCodec=%default_audioCodec%) else (
-set audioCodec=%~5
-set encodeAudio=true
-)
+if /i "%~5" equ "" (set audioCodec=%default_audioCodec%) else (set audioCodec=%~5)
 
 if /i "%~6" equ "" (set preset=%default_preset%) else (set preset=%~6)
 
@@ -92,13 +91,13 @@ if /i "%codec%" neq "h264" if /i "%codec%" neq "h265" (echo codec "%codec%" unsu
 echo   Known values: h264, h265
 goto usageHelp)
 
-if /i "%resolution%" neq "other" if /i "%resolution%" neq "854x480" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "2560x1440" if /i "%resolution%" neq "3840x2160" (echo resolution "%~4" not supported, defaulting to input video size
-echo   Known values: other, 854x480,, 1280x720, 1920x1080, 2560x1440, 3840x2160
+if /i "%resolution%" neq "other" if /i "%resolution%" neq "854x480" if /i "%resolution%" neq "1024x576" if /i "%resolution%" neq "1280x720" if /i "%resolution%" neq "1920x1080" if /i "%resolution%" neq "2560x1440" if /i "%resolution%" neq "3840x2160" (echo resolution "%~4" not supported, defaulting to input video size
+echo   Known values: other, 854x480,, 1024x576, 1280x720, 1920x1080, 2560x1440, 3840x2160
 set resolution=other
 set quality=other)
 
-if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" if /i "%quality%" neq "1440p" if /i "%quality%" neq "4k" (echo  quality unrecognized, using source's resolution instead
-echo   Known values: other, 480p, 720p, 1080p, 1440p, 4k
+if /i "%quality%" neq "other" if /i "%quality%" neq "480p" if /i "%quality%" neq "576p" if /i "%quality%" neq "DVD" if /i "%quality%" neq "720p" if /i "%quality%" neq "1080p" if /i "%quality%" neq "1440p" if /i "%quality%" neq "4k" (echo  quality unrecognized, using source's resolution instead
+echo   Known values: other, 480p, 576p, dvd, 720p, 1080p, 1440p, 4k
 set resolution=other
 set quality=other)
 
@@ -115,7 +114,7 @@ if /i "%bitDepth%" neq "8" if /i "%bitDepth%" neq "10" if /i "%bitDepth%" neq "1
 echo   Known values: 8,10,12
 goto usageHelp)
 
-if /i "%chroma%" neq "420" if /i "%chroma%" neq "422" if /i "%chroma%" neq "444" (echo   Warning: chroma "%chroma%" unrecognized
+if /i "%chroma%" neq "420" if /i "%chroma%" neq "422" if /i "%chroma%" neq "444" (echo   Warning: yuv chroma "%chroma%" unrecognized
 echo     Known values: 420, 422, 444
 echo     defaulting to %default_chroma%
 set chroma=%default_chroma%)
@@ -125,7 +124,12 @@ set chroma=%default_chroma%)
 ::12-bit h264
 ::12-bit h265 with yuv444p
 
-::opus/vorbis audio are incompatible with mp4 container, default to mkv instead
+::x265's ultrafast preset when used with yuv422p/yuv444p is buggy (crops video sometimes)
+if /i "%chroma%" neq "420" if /i "%preset%" equ "ultrafast" set preset=veryfast
+::Note: yuv444p video still sometimes gets cropped regardless of preset at certain resolutions (esp 480p) but is less noticable.
+::Be sure to play the stream back (do not rely on the metainfo) to check for this yuv422p/yuv444p bug in x265 encodes.
+
+::mp4 containers do not support opus/vorbis audio, use mkv instead
 if /i "%audioCodec%" equ "opus" set preferredContainer=mkv
 if /i "%audioCodec%" equ "vorbis" set preferredContainer=mkv
 ::could also use ffprobe to discover the audio format to see if it's compatible with mp4
@@ -144,12 +148,19 @@ if /i "%audioCodec%" equ "ac3" (set codecLibrary=ac3
 set audioExtension=ac3)
 if /i "%audioCodec%" equ "copy" (set codecLibrary=copy
 set audioExtension=mkv)
-if /i "%encodeAudio%" neq "true" (set codecLibrary=copy
-set audioExtension=mkv)
+::if /i "%encodeAudio%" neq "true" (set codecLibrary=copy
+::set audioExtension=mkv)
+set encodeAudio=true
+if /i "%audioCodec%" equ "none" (set encodeAudio=false)
+if /i "%audioCodec%" equ "no" (set encodeAudio=false)
+if /i "%audioCodec%" equ "n" (set encodeAudio=false)
 
+::debugging code
+if not defined codecLibrary set codecLibrary=libopus
+if not defined audioExtension set audioExtension=opus
 
 ::vEncode myfile.mp4 {h264/h265} {crf} {preset} {8/10/12} {resolution} {chroma}
-::4) encode to %temp%
+::4) encode video (into .mp4 for ffmpeg)
 ::if 8 bit, use ffmpeg + settings
 ::if 10-12 bit, make sure the correct bit depth x254/x265 file is present, then use ffmpeg to dump the y4m file
 ::encode it
@@ -180,18 +191,19 @@ if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma
 :postFFmpegEncode
 
 ::encode audio, will dump the first audio stream (encoded/copied as specified) to "%inputname%.%audioExtension%"
-call :encodeAudioFunct "%inputname%"
+if /i "%encodeAudio%" equ "true" call :encodeAudioFunct "%inputname%"
 
 ::merge audio and video into one file
 ::do not use ffmpeg for the initial muxing, it doesn't handle raw aac files well, instead mux again later to mp4 if requested
-"%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.mp4" --no-video --no-buttons --no-attachments "%inputname%.%audioExtension%" --no-video --no-audio "%inputname%"
+if /i "%encodeAudio%" equ "true" "%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.mp4" --no-video --no-buttons --no-attachments "%inputname%.%audioExtension%" --no-video --no-audio "%inputname%"
+if /i "%encodeAudio%" neq "true" "%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.mp4"
 if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
 
 ::if preferred container is mp4, then use ffmpeg to copy the video stream and the audio streams
 if /i "%preferredContainer%" equ "mp4" ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy "%outputname_noext%.mp4"
 
 ::cleanup
-if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
+if /i "%encodeAudio%" equ "true" if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
 if /i "%preferredContainer%" equ "mp4" if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 
 goto end
@@ -238,12 +250,13 @@ if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yu
 
 ::encode audio, will dump the first audio stream (encoded/copied as specified) to "%inputname%.%audioExtension%"
 if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
-call :encodeAudioFunct "%inputname%"
+if /i "%encodeAudio%" equ "true" call :encodeAudioFunct "%inputname%"
 
 ::use mkvmerge to copy the video stream and the audio streams, and the source file
 ::do not use ffmpeg for the initial muxing, it doesn't handle raw h264/h265 file streams well, instead mux again later to mp4 if requested
 if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
-"%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.%codec%" --no-video --no-buttons --no-attachments "%inputname%.%audioExtension%" --no-video --no-audio "%inputname%"
+if /i "%encodeAudio%" equ "true" "%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.%codec%" --no-video --no-buttons --no-attachments "%inputname%.%audioExtension%" --no-video --no-audio "%inputname%"
+if /i "%encodeAudio%" neq "true" "%mkvMergeExe%" -o "%outputname_noext%.mkv" --no-audio --no-buttons --no-attachments "%outputname_noext%.%codec%"
 
 ::if preferred container is mp4, then use ffmpeg to copy the video stream and the audio streams
 if /i "%preferredContainer%" equ "mp4" if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
@@ -253,7 +266,7 @@ if /i "%preferredContainer%" equ "mp4" ffmpeg -i "%outputname_noext%.mkv" -c:v c
 ::cleanup
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
-if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
+if /i "%encodeAudio%" equ "true" if exist "%inputname%.%audioExtension%" del "%inputname%.%audioExtension%"
 if /i "%preferredContainer%" equ "mp4" if exist "%outputname_noext%.mkv" del "%outputname_noext%.mkv"
 
 goto end
@@ -324,7 +337,7 @@ echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (h265)
 echo   Resolution: 480p, 720p, 1080p, 1440p, 4k (n/a)
 echo   CRF values: usually 16-28, (18)
-echo   AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
+echo   AudioCodecs: copy, none, opus, vorbis, aac, mp3, ac3 (opus)
 echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 echo   Bit depth: 8, 10 or 12, (10)
 echo   YUV Pixel Format: 420, 422, 444, (444)
