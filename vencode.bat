@@ -282,6 +282,7 @@ dir /b *.mp4 >> %tempfile% 2>nul
 dir /b *.mpg >> %tempfile% 2>nul
 dir /b *.avi >> %tempfile% 2>nul
 dir /b *.wmv >> %tempfile% 2>nul
+dir /b *.asf >> %tempfile% 2>nul
 dir /b *.flv >> %tempfile% 2>nul
 dir /b *.webm >> %tempfile% 2>nul
 dir /b *.h264 >> %tempfile% 2>nul
@@ -344,8 +345,10 @@ echo   YUV Pixel Format: 420, 422, 444, (444)
 echo   Note: Enter "" for a value to use the default value.
 echo.
 echo   To encode all video files in a directory:
-echo   vEncode * h265 "" 17 copy veryslow 12 420
+echo   vEncode * h264 "" 16 none veryslow 8 420
+echo   vEncode * h265 "" 17 copy "" 12 420
 echo   vEncode * h265 720p 17 opus veryslow 10 444
+echo   vEncode *
 :end
 ::if exist "%tempdir%" rmdir /s /q "%tempdir%"
 endlocal

@@ -15,6 +15,7 @@ The development emphasis is on zero-configuration "just works" software.
 - Supports changing key encode options crf/resolution/preset/bit-depth/chroma
 - Automatically place encoded video into Matroska (mkv) or standard MPEG (mp4) containers
 - Easily change the default encode settings both in the script and at runtime
+- Supports batch video processing
 
 ## Basic Usage Guide:
 
@@ -27,7 +28,8 @@ The development emphasis is on zero-configuration "just works" software.
 ## Release Notes:
 
 - Intended use case is to set lots of videos to encode and come back later to do the subs (with Aegisub and SubtitleEdit) and fix the metainfo (mkvmerge-gui).
-- If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
+- Important: When processing files containing only video or files that mkvmerge just doesn't like (wmv, asf, avs -avisynth scripts-), set the AudioCodec to "none" to process only the video.
+-If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
 - 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
 - The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
 
@@ -64,15 +66,17 @@ Suggested values and (defaults):
 Codec: h264, h265, (h265)
 Resolution: 480p, 720p, 1080p, 1440p, 4k (n/a)
 CRF values: usually 16-28, (17)
-AudioCodecs: copy, opus, vorbis, aac, mp3, ac3 (opus)
+AudioCodecs: copy, none, opus, vorbis, aac, mp3, ac3 (opus)
 Presets: ultrafast,fast,medium,slow,veryslow,placebo, (veryslow)
 Bit depth: 8, 10 or 12, (10)
 YUV Pixel Format: 420, 422, 444, (444)
 Note: Enter "" for a value to use the default value.
 
 To encode all video files in a directory:
-vEncode * h265 "" 17 copy veryslow 12 420
+vEncode * h264 "" 16 none veryslow 8 420
+vEncode * h265 "" 17 copy "" 12 420
 vEncode * h265 720p 17 opus veryslow 10 444
+vEncode *
 ```
 
 ```

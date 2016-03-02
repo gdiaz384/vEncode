@@ -1,10 +1,10 @@
 Todo:
 :vencode:
-Bug: files containing only video without any audio streams do not produce output.
-Quality: test on 32-bit OS systems
+Bug: files containing only video without any audio streams do not produce output. -(temp?) workaround is a "video-only" encode mode (where mkvmerge does not get invoked)
+Quality: test on 32-bit OS systems -initial tests indicate everything is normal but need to test more
 Rewrite: vEncode.bat should support multi-track audio natively.
 Rewrite/Bug: when copying audio, check to see if it's mp4 compatible using ffprobe.exe (increases dependencies)
-Bug: mkvmerge does not support merges from wmv containers, so need to convert container to mkv using ffmpeg and work from that one (then delete it when done)
+Bug: mkvmerge does not support merges from wmv containers, so need to convert container to mkv using ffmpeg and work from that one (then delete it when done) -(temp?) workaround is a "video-only" encode mode where mkvmerge does not get invoked
 Bug: Figure out why h265 12-bit yuv444p doesn't work. -developer issue
 Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -won't fix
 
@@ -14,7 +14,7 @@ Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for 
 
 Bug: encodes that use x265 sometimes have incorrect output resolutions when used with ultrafast/yuv422p/yuv444p, esp 480p/1080p yuv444p video. 
 The stream's meta info will show the original resolution but actual playback shows the distorted stream.
-Partial Workaround: All ultrafast preset selections now automatically use veryfast instead. 
+Partial Workaround: Non-yuv420p ultrafast preset selections now automatically use veryfast instead. 
 However certain -yuv444p- videos will still encode incorrectly regardless of preset, especially 480p ones. Always play the output to check!
 From:
 https://trac.ffmpeg.org/ticket/4980
