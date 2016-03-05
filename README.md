@@ -8,6 +8,7 @@ The development emphasis is on zero-configuration "just works" software.
 
 ## Key Features:
 
+- Simplified batch video processing
 - Easy to use
 - Scripting friendly
 - H264/H265/Opus support
@@ -15,7 +16,6 @@ The development emphasis is on zero-configuration "just works" software.
 - Supports changing key encode options crf/resolution/preset/bit-depth/chroma
 - Automatically place encoded video into Matroska (mkv) or standard MPEG (mp4) containers
 - Easily change the default encode settings both in the script and at runtime
-- Supports batch video processing
 
 ## Basic Usage Guide:
 
@@ -27,7 +27,7 @@ The development emphasis is on zero-configuration "just works" software.
 
 ## Release Notes:
 
-- Intended use case is to set lots of videos to encode and come back later to do the subs (with Aegisub and SubtitleEdit) and fix the metainfo (mkvmerge-gui).
+- Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub/SubtitleEdit) and fix the metainfo (mkvmerge-gui).
 - Important: When processing files containing only video or files that mkvmerge just doesn't like (wmv, asf, avs -avisynth scripts-), set the AudioCodec to "none" to process only the video.
 -If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
 - 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe

@@ -32,7 +32,7 @@ set default_quality=other
 ::480p, DVD, 576p, 720p, 1080p, 1440p, 4k, other
 set default_chroma=444
 ::420, 422, 444
-set useFFmpegFor8BitEncodes=false
+set useFFmpegFor8BitEncodes=true
 ::true, false
 
 set encodeAudio=true
@@ -42,7 +42,7 @@ set default_audioCodec=opus
 set audioBitrate=192
 ::128,192,224,320
 
-set preferredContainer=mp4
+set preferredContainer=mkv
 ::mkv, mp4
 
 if /i "%processor_Architecture%" equ "x86" set architecture=x86
@@ -123,8 +123,10 @@ set chroma=%default_chroma%)
 ::There are options specified that are not really compatible together such as:
 ::12-bit h264
 ::12-bit h265 with yuv444p
+::Todo: If the container is video only (y4m) or avc (maybe video only, ffprobe?) or incompatible wmv/asf then
+::set process audio = false or handle the audio differently (to make sure mkvmerge doesn't get invoked)
 
-::x265's ultrafast preset when used with yuv422p/yuv444p is buggy (crops video sometimes)
+::x265's ultrafast preset when used with yuv422p/yuv444p is buggy (v1.9) (crops video sometimes)
 if /i "%chroma%" neq "420" if /i "%preset%" equ "ultrafast" set preset=veryfast
 ::Note: yuv444p video still sometimes gets cropped regardless of preset at certain resolutions (esp 480p) but is less noticable.
 ::Be sure to play the stream back (do not rely on the metainfo) to check for this yuv422p/yuv444p bug in x265 encodes.
@@ -180,13 +182,13 @@ if /i "%resolution%" neq "other" set outputname_noext=%outputname_noext%.%qualit
 if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4%"
 
 if /i "%codec%" equ "h265" goto ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf yadif,fps=24000/1001 "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf yadif,fps=24000/1001,scale=%resolution% "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf fps=24000/1001 "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf fps=24000/1001,scale=%resolution% "%outputname_noext%.mp4"
 goto postFFmpegEncode
 
 :ffmpegH265
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf yadif,fps=24000/1001 "%outputname_noext%.mp4"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf yadif,fps=24000/1001,scale=%resolution% "%outputname_noext%.mp4"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf fps=24000/1001 "%outputname_noext%.mp4"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf fps=24000/1001,scale=%resolution% "%outputname_noext%.mp4"
 
 :postFFmpegEncode
 
@@ -225,27 +227,17 @@ goto end)
 if exist "%outputname_noext%.y4m" del "%outputname_noext%.y4m"
 if exist "%outputname_noext%.%codec%" del "%outputname_noext%.%codec%"
 
-::old way, dump *.y4m stream to feed it to ffmpeg later
-::if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001 "%outputname_noext%.y4m"
-::if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001,scale=%resolution% "%outputname_noext%.y4m"
-
 ::x264.exe and x265.exe use different syntaxes
 if /i "%codec%" equ "h265" goto videoPipeH265
-::old way, feed *.y4m stream to ffmpeg
-::x264 chroma needs to be specified with --output-csp i422
-::"%encodeExe%" --crf %crfValue% --output-csp i%chroma% --preset %preset% --output "%outputname_noext%.%codec%" "%outputname_noext%.y4m"
 
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001 -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001,scale=%resolution% -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf fps=24000/1001 -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf fps=24000/1001,scale=%resolution% -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 
 goto afterVideoPipeH265
 :videoPipeH265
-::old way, feed *.y4m stream to ffmpeg
-::x265 will honor the input chroma automatically (but mess with some quality values if yuv444p chrome is specified)
-::"%encodeExe%" --input "%outputname_noext%.y4m" --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 
-if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001 -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
-if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf yadif,fps=24000/1001,scale=%resolution% -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+if /i "%quality%" equ "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf fps=24000/1001 -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
+if /i "%quality%" neq "other" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf fps=24000/1001,scale=%resolution% -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%outputname_noext%.%codec%"
 :afterVideoPipeH265
 
 ::encode audio, will dump the first audio stream (encoded/copied as specified) to "%inputname%.%audioExtension%"
@@ -288,6 +280,7 @@ dir /b *.webm >> %tempfile% 2>nul
 dir /b *.h264 >> %tempfile% 2>nul
 dir /b *.h265 >> %tempfile% 2>nul
 dir /b *.avc >> %tempfile% 2>nul
+dir /b *.y4m >> %tempfile% 2>nul
 
 for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 >> temp.cmd
 

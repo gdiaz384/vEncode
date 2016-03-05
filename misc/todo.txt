@@ -11,6 +11,10 @@ Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved c
 :aencode:
 Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for Matroska containers
 
+-Bug fix: Removed yadif from video filters since it was causing distortions (AA) in already progressive video
+user now responsible for making sure their content is progressive prior to encoding (since interlacing is icky)
+Hopefully this can be added back by using custom avisynth scripts:  vEncode * myFilters.txt
+
 
 Bug: encodes that use x265 sometimes have incorrect output resolutions when used with ultrafast/yuv422p/yuv444p, esp 480p/1080p yuv444p video. 
 The stream's meta info will show the original resolution but actual playback shows the distorted stream.
