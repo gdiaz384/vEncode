@@ -159,8 +159,8 @@ if /i "%inputFileExtension%" equ ".mp3" set audioOnlyFile=true
 if /i "%inputFileExtension%" equ ".ac3" set audioOnlyFile=true
 if /i "%inputFileExtension%" equ ".flac" set audioOnlyFile=true
 
-::figure out how many streams the audio has
-"%ffprobeexe%" -v error -select_streams a -show_entries stream=codec_name -of default=noprint_wrappers=1 "%extractAudioFunctFileName%" >%tempffprobeFile%
+::figure out how many streams the audio has by dumping out the codec_name for each
+"%ffprobeexe%" -v error -select_streams a -show_entries stream=codec_name -of default=noprint_wrappers=1 "%extractAudioFunctFileName%">%tempffprobeFile%
 if not exist %tempffprobeFile% goto :eof
 
 for /f %%i in (%tempffprobeFile%) do set /a audioStreamCount+=1

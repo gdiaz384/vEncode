@@ -8,14 +8,13 @@ The development emphasis is on zero-configuration "just works" software.
 
 ## Key Features:
 
-- Simplified batch video processing
-- Easy to use
-- Scripting friendly
+- Makes batch video processing very easy
+- AviSynth/Scripting friendly
 - H264/H265/Opus support
-- Supports using the latest versions of key tools (ffmpeg, x264, x265, mkvmerge)
 - Supports changing key encode options crf/resolution/preset/bit-depth/chroma
+- Easily change the default encode settings and/or change them at runtime dynamically
+- Supports using the latest versions of key tools (ffmpeg, x264, x265, mkvmerge)
 - Automatically place encoded video into Matroska (mkv) or standard MPEG (mp4) containers
-- Easily change the default encode settings both in the script and at runtime
 
 ## Basic Usage Guide:
 
@@ -28,7 +27,9 @@ The development emphasis is on zero-configuration "just works" software.
 ## Release Notes:
 
 - Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub/SubtitleEdit) and fix the metainfo (mkvmerge-gui).
-- Important: When processing files containing only video or files that mkvmerge just doesn't like (wmv, asf, avs -avisynth scripts-), set the AudioCodec to "none" to process only the video.
+- Important: When processing files containing only video or files that mkvmerge just doesn't like (wmv, asf, avs -avisynth scripts-), set the AudioCodec to "none" to process only the video. See the example usage below.
+- Important (for avisynth users): Remember that the architecture of avisynth must match the architecture of the invoked ffmpeg executable. To invoke the correct one automatically, on a 64-bit system using Avisynth+, use a 64-bit cmd (the normal one) or for the 32-bit Avisynth use: C:\Windows\sysWOW64\cmd.exe
+- Also: (for avisynth users) the encode executable's (x264.exe/x265.exe) architecture does not have to match. Feel free to copy x265-10.exe/x265-12.exe from the x64 folder to the x86 folder.
 -If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
 - 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
 - The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
