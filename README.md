@@ -1,8 +1,8 @@
 # vEncode
 
-vEncode.bat is a windows script that encodes video into h264/h265.
+vEncode.bat is a windows script that encodes video to h264/h265.
 
-aEncode.bat, a companion script, supports batch multi-audio track encoding.
+aEncode.bat, a companion script, supports audio-only encoding.
 
 The development emphasis is on zero-configuration "just works" software.
 
@@ -24,17 +24,12 @@ The development emphasis is on zero-configuration "just works" software.
 4. vEncode myfile.mp4 h265
 5. wait a while
 
-## Release Notes:
-
-- Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub/SubtitleEdit) and fix the metainfo (mkvmerge-gui).
-- Important: When processing files containing only video or files that mkvmerge just doesn't like (wmv, asf, avs -avisynth scripts-), set the AudioCodec to "none" to process only the video. See the example usage below.
-- Important (for avisynth users): Remember that the architecture of avisynth must match the architecture of the invoked ffmpeg executable. To invoke the correct one automatically, on a 64-bit system using Avisynth+, use a 64-bit cmd (the normal one) or for the 32-bit Avisynth use: C:\Windows\sysWOW64\cmd.exe
-- Also: (for avisynth users) the encode executable's (x264.exe/x265.exe) architecture does not have to match. Feel free to copy x265-10.exe/x265-12.exe from the x64 folder to the x86 folder.
--If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
-- 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
-- The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
-
-![screenshot1](misc/BitDepthCompatability.png)
+## Download:
+```
+Latest Version: 1.0.0-rc2
+In Development: 1.0.0-rc3
+```
+Click [here](//github.com/gdiaz384/vEncode/releases) or on "releases" at the top to download the latest version.
 
 ## Example Usage:
 ```
@@ -103,21 +98,30 @@ aEncode * opus 192
 aEncode * opus 192 2.5
 ```
 
-## Dependencies: 
+## Release Notes:
+
+- Intended use case is to set lots of videos to encode and come back later to do the subs (Aegisub/SubtitleEdit) and fix the metainfo (mkvmerge-gui).
+-If downloading from github manually (instead of using an official release.zip) remember to change the line ending format from Unix back to Windows using Notepad++.
+- 8-bit encodes can use either ffmpeg.exe or x264-8.exe/x265-8.exe but 10/12 bit encoding always require x264-10.exe/x264-12.exe and x265-10.exe/x265-12.exe
+- The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64.
+
+![screenshot1](misc/BitDepthCompatability.png)
+
+## Additional Notes For AVISynth Users:
+
+- Remember that the architecture of avisynth must match the architecture of any executables that interact with the .avs file directly. 
+- When using vEncode, this means the architectures of the ffmpeg/ffprobe must match.
+- On 64-bit systems, to invoke the correct executable automatically use the command prompt located at C:\Windows\sysWOW64\cmd.exe  
+- On 64-bit systems with Avisynth+ installed, use the normal cmd.
+- On 64-bit systems, the encode executable's (x264.exe/x265.exe) architecture does not have to match (since they do not directly interact with the .avs file but rather take their input from ffmpeg). Thus, feel free to copy x265-10.exe/x265-12.exe from the bin\x64 folder to the bin\x86 folder for convenience purposes.
+
+## Dependencies (included):
 ```
-Basic: ffmpeg.exe, mkvmerge.exe
+Basic: ffmpeg.exe, mkvmerge.exe, ffprobe.exe
 (optional) For native h264/h265 8-bit support: x264-8.exe, x265-8.exe
 For 10-bit support: x264-10.exe, x265-10.exe
 For 12-bit support: x264-12.exe, x265-12.exe
-aEncode.bat requires ffprobe.exe
 ```
-
-## Download:
-```
-Latest Version: 1.0.0-rc1
-In Development: 1.0.0-rc2
-```
-Click [here](//github.com/gdiaz384/vEncode/releases) or on "releases" at the top to download the latest version.
 
 ## License:
 Pick your License: GPL (any) or BSD (any) or MIT/Apache

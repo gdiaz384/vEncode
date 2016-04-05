@@ -110,11 +110,15 @@ goto end
 dir /b *.mkv >> %tempfile% 2>nul
 dir /b *.mp4 >> %tempfile% 2>nul
 dir /b *.wmv >> %tempfile% 2>nul
+dir /b *.mpg >> %tempfile% 2>nul
 dir /b *.webm >> %tempfile% 2>nul
 dir /b *.flv >> %tempfile% 2>nul
 dir /b *.avi >> %tempfile% 2>nul
 dir /b *.ogg >> %tempfile% 2>nul
+dir /b *.asf >> %tempfile% 2>nul
+dir /b *.3gp >> %tempfile% 2>nul
 
+dir /b *.m4a >> %tempfile% 2>nul
 dir /b *.ac3 >> %tempfile% 2>nul
 dir /b *.mp3 >> %tempfile% 2>nul
 dir /b *.aac >> %tempfile% 2>nul
