@@ -85,8 +85,8 @@ set audioExtension=mp3)
 if /i "%audioCodec%" equ "ac3" (set codecLibrary=ac3
 set audioExtension=ac3)
 
-if /i "%audioBitrate%" neq "96" if /i "%audioBitrate%" neq "128" if /i "%audioBitrate%" neq "160" if /i "%audioBitrate%" neq "192" if /i "%audioBitrate%" neq "224" if /i "%audioBitrate%" neq "320" (echo unrecognized bitrate "%audioBitrate%"  Using default of "%default_audioBitrate%" instead
-set audioBitrate=%default_audioBitrate%)
+if /i "%audioBitrate%" neq "96" if /i "%audioBitrate%" neq "128" if /i "%audioBitrate%" neq "160" if /i "%audioBitrate%" neq "192" if /i "%audioBitrate%" neq "224" if /i "%audioBitrate%" neq "320" (echo unrecognized bitrate "%audioBitrate%"
+goto end)
 
 if /i "%volumeLevel%" neq "0.5" if /i "%volumeLevel%" neq "0.8" if /i "%volumeLevel%" neq "1" if /i "%volumeLevel%" neq "1.0" if /i "%volumeLevel%" neq "1.5" if /i "%volumeLevel%" neq "2" if /i "%volumeLevel%" neq "2.0" if /i "%volumeLevel%" neq "2.5" if /i "%volumeLevel%" neq "3" if /i "%volumeLevel%" neq "3.5" if /i "%volumeLevel%" neq "4" if /i "%volumeLevel%" neq "4.0" (echo.
 echo   volumeLevel unrecognized "%volumeLevel%"   

@@ -292,10 +292,10 @@ dir /b *.asf >> %tempfile% 2>nul
 dir /b *.3gp >> %tempfile% 2>nul
 dir /b *.h264 >> %tempfile% 2>nul
 dir /b *.h265 >> %tempfile% 2>nul
-dir /b *.avc >> %tempfile% 2>nul
+dir /b *.avs >> %tempfile% 2>nul
 dir /b *.y4m >> %tempfile% 2>nul
 
-for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8>> temp.cmd
+for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>temp.cmd
 
 if exist "%tempfile%" del "%tempfile%"
 type temp.cmd
@@ -395,7 +395,7 @@ goto :eof
 
 :usageHelp
 echo   "vEncode" encodes an existing file into h264/h265 formats
-echo   Dependencies: ffmpeg.exe, mkvmerge.exe
+echo   Dependencies: ffmpeg.exe, mkvmerge.exe, ffprobe.exe
 echo   For 10Bit Support: x264-10.exe, x265-10.exe
 echo   For 12Bit Support: x264-12.exe, x265-12.exe
 echo   Syntax:

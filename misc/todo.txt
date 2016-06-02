@@ -1,30 +1,38 @@
 Todo:
 :vencode:
-Quality: test on 32-bit OS systems -initial tests indicate everything is normal but need to test more
 Quality: test and document volume adjustment parameter
-Rewrite(?): Add flac support maybe(?)
-Rewrite(?): Make fps filter optional(?)
-Bug: Figure out why h265 12-bit yuv444p doesn't work. -developer issue
-Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -won't fix
+Rewrite: Make fps filter optional
+Feature: Make (encoder .exe) single threaded mode available (or choose # of threads)
+Feature: support lossless mode
+Rewrite: Add fLAC support (update aencode first)
+
 
 :aencode:
 Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for Matroska containers
+Bug: 224k should also work, not just 224 when specifying bitrate
+Rewrite: bitrate should be any valid range (32-1548) not just specific bitrates
+Feature: add FLAC support
 
-Also: Removed yadif from video filters since it was causing distortions (AA) in already progressive video.
+
+Note: Removed yadif from video filters since it was causing distortions (AA) in already progressive video.
 User is now responsible for making sure their content is progressive prior to encoding (since interlacing is icky).
 Video can be deinterlaced (or IVTC'd instead hopefully) by using custom avisynth scripts:  vEncode myAVISynthScript.avs
 
 
+Known bugs:
+Bug: Figure out why h265 12-bit yuv444p doesn't work. -x265 developer issue
+Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -won't fix
+
 Bug: encodes that use x265 sometimes have incorrect output resolutions when used with ultrafast/yuv422p/yuv444p, esp 480p/1080p yuv444p video. 
 The stream's meta info will show the original resolution but actual playback shows the distorted stream.
-Partial Workaround: Non-yuv420p ultrafast preset selections now automatically use veryfast instead. 
+Partial Workaround: Non-yuv420p hevc ultrafast preset selections now automatically use veryfast instead. 
 However certain -yuv444p- videos will still encode incorrectly regardless of preset, especially 480p ones. Always play the output to check!
 From:
 https://trac.ffmpeg.org/ticket/4980
 https://bitbucket.org/multicoreware/x265/issues/197/yuv444p-lossless-roundtrip-for-1080p
 
 
-When using x265.exe, why does yuv444p produce smaller file sizes than yuv422p, on par with yuv420p?
+Q: When using x265.exe, why does yuv444p produce smaller file sizes than yuv422p, on par with yuv420p?
 Code: "In 444, chroma gets twice as much resolution, so halve quality when psy-rd is enabled" p->cbqpOffset +=6;
 Reason: "This is primarily a visual quality improvement/psy-rd hack. In 444, since chroma resolution is on par 
 with luma, and our eyes arent very sensitive to chroma, we increase the chroma QP so that those bits can be used 
