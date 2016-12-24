@@ -212,9 +212,9 @@ echo   aEncode myfile.mp4 opus 320 1
 echo   aEncode myfile.mp4 opus 320 3.5
 echo.
 echo   Suggested values and (defaults):
-echo   Codec: opus, vorbis, aac, mp3, ac3
-echo   Bitrate: 96, 128, 160, 192, 224,320
-echo   VolumeLevel: 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0
+echo   Codec: opus, vorbis, aac, mp3, ac3, (%default_audioCodec%)
+echo   Bitrate: 96, 128, 160, 192, 224, 320, (%default_audioBitrate%)
+echo   VolumeLevel: 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, (%default_volumeLevel%)
 echo.
 echo   To encode all media files in a directory:
 echo   aEncode *
@@ -225,4 +225,5 @@ echo   aEncode * opus 192 2.5
 :end
 if exist "%tempfile%" del "%tempfile%"
 if exist "%tempffprobeFile%" del "%tempffprobeFile%"
+
 endlocal

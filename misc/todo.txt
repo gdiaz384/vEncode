@@ -9,6 +9,7 @@ Rewrite: Add fLAC support (update aencode first)
 
 :aencode:
 Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for Matroska containers
+Bug: aencode should append the new extension not change it (else transcoding errors out)
 Bug: 224k should also work, not just 224 when specifying bitrate
 Rewrite: bitrate should be any valid range (32-1548) not just specific bitrates
 Feature: add FLAC support
