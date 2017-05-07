@@ -29,7 +29,7 @@ set default_chroma=444
 ::420, 422, 444
 set default_fps=original
 ::original, 24000/1001, 25000/1000, 30000/1001, 30000/1000
-set useFFmpegFor8BitEncodes=true
+set useFFmpegFor8BitEncodes=false
 ::true, false
 set cleanupEncodedVideoTrack=true
 ::true, false
@@ -253,8 +253,8 @@ if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chr
 goto postFFmpegEncode
 
 :ffmpegH265
-if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf fps=%fps% "%videoOnlyOutputName%"
-if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf fps=%fps%,scale=%resolution% "%videoOnlyOutputName%"
+if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "fps=%fps%" "%videoOnlyOutputName%"
+if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "fps=%fps%,scale=%resolution%" "%videoOnlyOutputName%"
 :postFFmpegEncode
 
 goto processAudio
@@ -331,10 +331,12 @@ dir /b *.asf >> %tempfile% 2>nul
 dir /b *.3gp >> %tempfile% 2>nul
 dir /b *.h264 >> %tempfile% 2>nul
 dir /b *.h265 >> %tempfile% 2>nul
+dir /b *.avc >> %tempfile% 2>nul
+dir /b *.hevc >> %tempfile% 2>nul
 dir /b *.avs >> %tempfile% 2>nul
 dir /b *.y4m >> %tempfile% 2>nul
 
-for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>temp.cmd
+for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>"temp.cmd"
 
 if exist "%tempfile%" del "%tempfile%"
 type temp.cmd
@@ -485,7 +487,7 @@ echo.
 echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (%default_codec%)
 echo   Resolutions (16:9): 480p, 576p, 720p, 1080p, 1440p, 2160p, 4k
-echo   (4:3): 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p_43, 4k_43
+echo   4:3 : 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p_43, 4k_43
 echo   CRF values: usually 16-28, (%default_crfValue%)
 echo   AudioCodecs: copy, none, opus, vorbis, aac, mp3, ac3, (%default_audioCodec%)
 echo   Presets: ultrafast,fast,medium,slow,veryslow,placebo, (%default_preset%)
@@ -495,8 +497,9 @@ echo   FPS: 24000/1001, 25000/1000, 30000/1001, 30000/1000, (%default_fps%)
 echo   Note: Enter "" for a value to use the default value.
 echo.
 echo   To encode all video files in a directory:
-echo   vEncode * h264 "" 16 none veryslow 8 420
-echo   vEncode * h265 "" 17 copy "" 12 420
+echo   vEncode * h264 "" 16 copy veryslow 8 420
+echo   vEncode * h264 "" 18 none "" 10 420
+echo   vEncode * h265 "" 18  aac "" 12 420
 echo   vEncode * h265 720p 17 opus veryslow 10 444 24000/1001   
 echo   vEncode *
 

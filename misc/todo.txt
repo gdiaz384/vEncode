@@ -1,19 +1,20 @@
 Todo:
 :vencode:
-Quality: test and document volume adjustment parameter
-Rewrite: Make fps filter optional
+Quality: test and document volume adjustment parameter better
+Rewrite: Make fps filter optional -how?
 Feature: Make (encoder .exe) single threaded mode available (or choose # of threads)
-Feature: support lossless mode
-Rewrite: Add fLAC support (update aencode first)
-
+Feature: support lossless mode (huffyuv)
+Rewrite: Add fLAC support (update aencode first) -partly done
+Quality: check if libfdk_aac is available, if it is, use that for audio encodes instead.
+Feature: add GOP options -will not add. ffmpeg already has a concise UI for this.
 
 :aencode:
 Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for Matroska containers
 Bug: aencode should append the new extension not change it (else transcoding errors out)
-Bug: 224k should also work, not just 224 when specifying bitrate
-Rewrite: bitrate should be any valid range (32-1548) not just specific bitrates
-Feature: add FLAC support
-
+Bug: 224k should also work, not just 224 when specifying bitrate -done
+Rewrite: bitrate should be any valid range (32-1548) not just specific bitrates -done
+Feature: add FLAC support -done (also wave)
+Feature: should support extracting and transcoding audio from mkv -done
 
 Note: Removed yadif from video filters since it was causing distortions (AA) in already progressive video.
 User is now responsible for making sure their content is progressive prior to encoding (since interlacing is icky).
@@ -21,8 +22,8 @@ Video can be deinterlaced (or IVTC'd instead hopefully) by using custom avisynth
 
 
 Known bugs:
-Bug: Figure out why h265 12-bit yuv444p doesn't work. -x265 developer issue
-Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -won't fix
+Bug: Figure out why h265 12-bit yuv444p doesn't work. -cannot fix, x265 developer issue
+Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -will not fix
 
 Bug: encodes that use x265 sometimes have incorrect output resolutions when used with ultrafast/yuv422p/yuv444p, esp 480p/1080p yuv444p video. 
 The stream's meta info will show the original resolution but actual playback shows the distorted stream.
