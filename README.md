@@ -119,20 +119,20 @@ aEncode * opus 192 2.5
 
 Setting | Options | Notes
 --- | --- | ---
-default_codec | h264/(h265) | -
+default_codec | h264/(h265) | h264 at crf=0 is lossless
 default_crfValue | 0-51, (17) | -
-default_preset | ultrafast, veryfast, fast, medium, slow, (veryslow), placebo | -
-default_bitDepth | 8, (10), 12 | -
+default_preset | ultrafast, veryfast, fast, medium, slow, (veryslow), placebo | Medium-veryfast have the best time/compression efficency.
+default_bitDepth | 8, (10), 12 | 8-bit is widely compatible.
 default_quality | (original), 480p, 576p, 720p, 1080p, 1440p, 2160p, 4k, 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p, 4k_43 | Adjust resolution during filtering stage (avs/vpy) for finer control. See Resolution Map below.
-default_chroma | 420, 422, (444) | -
-default_fps | (original), any float or decimal | Reccomended: (original), 24000/1001, 25000/1000, 30000/1000, 30000/1001
-useFFmpegFor8BitEncodes | (true), false | -
-cleanupEncodedVideoTrack | (true), false | -
-encodeAudio | (true), false | -
-default_audioCodec | opus, vorbis, (aac), mp3, ac3, copy, flac, wav | -
+default_chroma | 420, 422, (444) | 420 chroma is widely compatible.
+default_fps | (original), any float or decimal | Recommended: (original), 24000/1001, 25000/1000, 30000/1000, 30000/1001
+useFFmpegFor8BitEncodes | (true), false | Set to false to use x264-8b.exe and x264-10b.exe.
+cleanupEncodedVideoTrack | (true), false | Delete raw .h264/.h265 video stream after muxing into mkv/mp4.
+encodeAudio | (true), false | Vapoursynth (.vpy) files do not support audio. Use aEncode instead and then mux together.
+default_audioCodec | opus, vorbis, (aac), mp3, ac3, copy, flac, wav | If encoded, audio will be downmuxed to stereo. "aac" uses ffmpeg's native AAC encoder.
 audioBitrate | gtr 56 and lss 1552, (224) | Recommended: 96, 128, 192, (224), 320, 448
-volumeLevel | 0.5, 0.6, 0.8, (1.0), 1.2, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0 | -
-cleanupAudioTracks | (true), false | -
+volumeLevel | 0.5, 0.6, 0.8, (1.0), 1.2, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0 | Increase/decrease audio volume. "1.0" means keep the same.
+cleanupAudioTracks | (true), false | Delete encoded audio streams after muxing into mkv/mp4.
 preferredContainer | (mkv), mp4 | When codecs are not mp4 compatible, mkv will always be used.
     
 __Resolution Map__:
