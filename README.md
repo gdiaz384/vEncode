@@ -116,22 +116,23 @@ aEncode * opus 192 2.5
 -  Due to various compatibility quirks related to chroma handling, vapoursynth (.vpy) encodes besides h264 10-bit yuv420p (and also 8-bit if useFFmpegFor8BitEncodes=false) use 2 pipes with 3 executables invoked, instead of the usual 1 pipe with 2 executables invoked. All other codec and chroma options use 2 pipes, 3 executables, resulting in a noticable decrease in encoding performance and increase in resource consumption. This issue does not affect non-vpy encodes and also vpy encodes with the following settings: h264 10-bit yuv420p .
 -  Most settings can be changed at runtime. To change the script-level defaults, open the script and modify the appropriate line.  The following settings can be changed:
 
+
 Setting | Options | Notes
---- | --- | --- | ---
-default_codec | h264/(h265) | 
-default_crfValue | 0-51, (17) | 
-default_preset | ultrafast, veryfast, fast, medium, slow, (veryslow), placebo | 
-default_bitDepth | 8, (10), 12 | 
+--- | --- | ---
+default_codec | h264/(h265) | -
+default_crfValue | 0-51, (17) | -
+default_preset | ultrafast, veryfast, fast, medium, slow, (veryslow), placebo | -
+default_bitDepth | 8, (10), 12 | -
 default_quality | (original), 480p, 576p, 720p, 1080p, 1440p, 2160p, 4k, 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p, 4k_43 | Adjust resolution during filtering stage (avs/vpy) for finer control. See Resolution Map below.
-default_chroma | 420, 422, (444) | 
+default_chroma | 420, 422, (444) | -
 default_fps | (original), any float or decimal | Reccomended: (original), 24000/1001, 25000/1000, 30000/1000, 30000/1001
-useFFmpegFor8BitEncodes | (true), false | 
-cleanupEncodedVideoTrack | (true), false | 
-encodeAudio | (true), false | 
-default_audioCodec | opus, vorbis, (aac), mp3, ac3, copy, flac, wav | 
+useFFmpegFor8BitEncodes | (true), false | -
+cleanupEncodedVideoTrack | (true), false | -
+encodeAudio | (true), false | -
+default_audioCodec | opus, vorbis, (aac), mp3, ac3, copy, flac, wav | -
 audioBitrate | gtr 56 and lss 1552, (224) | Recommended: 96, 128, 192, (224), 320, 448
-volumeLevel | 0.5, 0.6, 0.8, (1.0), 1.2, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0 | 
-cleanupAudioTracks | (true), false |  
+volumeLevel | 0.5, 0.6, 0.8, (1.0), 1.2, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0 | -
+cleanupAudioTracks | (true), false | -
 preferredContainer | (mkv), mp4 | When codecs are not mp4 compatible, mkv will always be used.
     
 __Resolution Map__:
