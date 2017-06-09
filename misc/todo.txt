@@ -1,11 +1,11 @@
 Todo:
 :vencode:
-Quality: test and document volume adjustment parameter better
-Rewrite: Make fps filter optional -how?
-Feature: Make (encoder .exe) single threaded mode available (or choose # of threads)
-Feature: support lossless mode (huffyuv)
-Rewrite: Add fLAC support (update aencode first) -partly done
-Quality: check if libfdk_aac is available, if it is, use that for audio encodes instead.
+Quality: test and document volume adjustment parameter better -done
+Rewrite: Make fps filter optional -how? -done (line duplication)
+Feature: Make (encoder .exe) single threaded mode available (or choose # of threads) -no, wpp decreases storage efficency < ~1% and disabling it increases encode times by 20%, threads count has no effect on size (<0.01%)
+Feature: support lossless mode (huffyuv) -meh, h264 crf=0 is already lossless and supported
+Rewrite: Add FLAC support (update aencode first) -done
+Quality: check if libfdk_aac is available, if it is, use that for audio encodes instead. -no, native aac encoder is comparable
 Feature: add GOP options -will not add. ffmpeg already has a concise UI for this.
 
 :aencode:
@@ -23,7 +23,7 @@ Video can be deinterlaced (or IVTC'd instead hopefully) by using custom avisynth
 
 Known bugs:
 Bug: Figure out why h265 12-bit yuv444p doesn't work. -cannot fix, x265 developer issue
-Bug: Files with ! or & in the name error out (cannot parse/fix due to reserved character in CLI) -will not fix
+Bug: Files with ! or & in the name or Path will error out (cannot parse/fix due to reserved character in CLI) -will not fix
 
 Bug: encodes that use x265 sometimes have incorrect output resolutions when used with ultrafast/yuv422p/yuv444p, esp 480p/1080p yuv444p video. 
 The stream's meta info will show the original resolution but actual playback shows the distorted stream.

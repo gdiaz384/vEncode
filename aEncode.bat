@@ -100,11 +100,11 @@ set audioExtension=flac)
 
 if /i "%audioBitrate:~-1%" equ "k" set audioBitrate=%audioBitrate:~,-1%
 
-if %audioBitrate% leq 54 (echo   unrecognized bitrate "%audioBitrate%"
-echo   Value must be greater than 54 and less than 1536
+if %audioBitrate% leq 55 (echo   unrecognized bitrate "%audioBitrate%"
+echo   Value must be greater than 55 and less than 1536
 goto end)
 if %audioBitrate% gtr 1536 (echo   unrecognized bitrate "%audioBitrate%"
-echo   Value must be greater than 54 and less than 1536
+echo   Value must be greater than 55 and less than 1536.
 goto end)
 
 if /i "%extractOrMerge%" equ "extract" (set extractAudioFromVideo=true) else (set extractAudioFromVideo=false)
