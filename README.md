@@ -14,7 +14,7 @@ The development emphasis is on zero-configuration "just works" software.
 - Supports changing key encode options (crf/resolution/preset/bit-depth/chroma/fps).
 - Easily change the encode setting defaults and/or change them at runtime dynamically.
 - Supports using the latest versions of key tools ([ffmpeg](//ffmpeg.org/about.html), [x264](//www.videolan.org/developers/x264.html), [x265](http://msystem.waw.pl/x265/), [mkvmerge](//www.videohelp.com/software/MKVToolNix)).
-- Automatically place encoded video into Matroska (mkv) or standard MPEG (mp4) containers.
+- Automatically place encoded video into [Matroska](//www.matroska.org/technical/whatis/index.html) (mkv) or standard MPEG (mp4) containers.
 
 ## Basic Usage Guide:
 
@@ -115,6 +115,7 @@ aEncode * opus 192 2.5
 
 -  Due to various compatibility quirks related to chroma handling, vapoursynth (.vpy) encodes besides h264 10-bit yuv420p (and also 8-bit if useFFmpegFor8BitEncodes=false) use 2 pipes with 3 executables invoked, instead of the usual 1 pipe with 2 executables invoked. All other codec and chroma options use 2 pipes, 3 executables, resulting in a noticable decrease in encoding performance and increase in resource consumption. This issue does not affect non-vpy encodes and also vpy encodes with the following settings: h264 10-bit yuv420p .
 -  Most settings can be changed at runtime. To change the script-level defaults, open the script and modify the appropriate line.  The following settings can be changed:
+
 Setting | Options | Notes
 --- | --- | --- | ---
 default_codec | h264/(h265) | 
@@ -134,6 +135,7 @@ cleanupAudioTracks | (true), false |
 preferredContainer | (mkv), mp4 | When codecs are not mp4 compatible, mkv will always be used.
     
 __Resolution Map__:
+
 16:9 Resolution | 16:9 Dimensions | 4:3 Resolution | 4:3 Dimensions
 --- | --- | --- | ---
 480p | 854x480 | 480p_43 | 640x480
@@ -143,7 +145,6 @@ __Resolution Map__:
 1440p | 2560x1440 | 1440p_43 | 1920x1440
 2160p | 3840x2160 | 2160p_43 | 2880x2160
 4k | 4096x2160 | 4k_43 | 2880x2160
-
 
 ## Additional Notes For AVISynth Users:
 
@@ -159,7 +160,7 @@ Basic: ffmpeg.exe, mkvmerge.exe, ffprobe.exe
 (optional) For native h264/h265 8-bit support: x264-8.exe, x265-8.exe
 For 10-bit support: x264-10.exe, x265-10.exe
 For 12-bit support: x264-12.exe, x265-12.exe
-For Vapoursynth support: "vspipe" must be in %path%
+For Vapoursynth support: 1) Install Vapoursynth, 2) "vspipe" must be in %path%
 ```
 
 For the latest versions of the binaries:
