@@ -14,9 +14,9 @@ set tempdir=%temp%\temp%random%
 
 set default_codec=h265
 ::h264, h265
-set default_crfValue=17
-::h264 16-28
-::h265 14-26
+set default_crfValue=18
+::h264 0, 14-28
+::h265 0, 15-32
 set default_preset=veryslow
 ::ultrafast, veryfast, fast, medium, slow, veryslow, placebo
 set default_bitDepth=10
@@ -25,10 +25,13 @@ set default_quality=original
 ::Original resolution: original
 ::16:9 Resolutions: 480p, 576p, 720p, 1080p, 1440p, 2160p, 4k
 ::4:3 Resolutions: 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p_43, 4k_43
-set default_chroma=444
-::420, 422, 444
+set default_chroma=original
+::original, 420, 422, 444
 set default_fps=original
 ::original, 24000/1001, 25000/1000, 30000/1000, 30000/1001
+set default_aqMode=3
+::AVC: default,0,1,2,3
+::HEVC: default,0,1,2,3,4
 set useFFmpegFor8BitEncodes=true
 ::true, false
 set cleanupEncodedVideoTrack=true
@@ -39,7 +42,7 @@ set encodeAudio=true
 set default_audioCodec=aac
 ::opus, vorbis, aac, mp3, ac3, copy, flac, wav
 set audioBitrate=224
-::96, 128, 192, 224, 320
+::96, 128, 192, 224, 256, 320
 set volumeLevel=1.0
 ::0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0
 set cleanupAudioTracks=true
@@ -62,11 +65,11 @@ set x264prefix=%exePath%\bin\%architecture%\x264
 set x265prefix=%exePath%\bin\%architecture%\x265
 set mkvMergeExe=%exePath%\bin\%architecture%\mkvmerge.exe
 
-set tempfile=temp.txt
+set tempfile=temp.%random%.txt
 if exist "%tempfile%" del "%tempfile%"
-set tempffprobeFile=tempaudio.txt
+set tempffprobeFile=tempaudio.%random%.txt
 if exist "%tempffprobeFile%" del "%tempffprobeFile%"
-set tempFPSFile=tempFPS.txt
+set tempFPSFile=tempFPS.%random%.txt
 if exist "%tempFPSFile%" del "%tempFPSFile%"
 
 
@@ -125,9 +128,13 @@ if /i "%~7" equ "" (set bitDepth=%default_bitDepth%) else (set bitDepth=%~7)
 
 if /i "%~8" equ "" (set chroma=%default_chroma%) else (set chroma=%~8)
 
+set changeFPS=false
 if /i "%~9" equ "" (set fps=%default_fps%) else (
 set changeFPS=true
 set fps=%~9)
+
+set aqMode=%default_aqMode%
+
 
 ::echo   vEncode * h265 720p 18 opus veryslow 10 422
 ::3) validate input
@@ -162,10 +169,12 @@ if /i "%bitDepth%" neq "8" if /i "%bitDepth%" neq "10" if /i "%bitDepth%" neq "1
 echo   Known values: 8,10,12
 goto end)
 
-if /i "%chroma%" neq "420" if /i "%chroma%" neq "422" if /i "%chroma%" neq "444" (echo   Warning: yuv chroma "%chroma%" unrecognized
+if /i "%chroma%" neq "original" if /i "%chroma%" neq "420" if /i "%chroma%" neq "422" if /i "%chroma%" neq "444" (echo   Warning: yuv chroma "%chroma%" unrecognized
 echo     Known values: 420, 422, 444
-echo     defaulting to %default_chroma%
-set chroma=%default_chroma%)
+goto end)
+::check if special chroma was specified
+set changeChroma=false
+if /i "%chroma%" neq "original" set changeChroma=true
 
 if /i "%volumeLevel%" neq "0.5" if /i "%volumeLevel%" neq "0.6" if /i "%volumeLevel%" neq "0.8" if /i "%volumeLevel%" neq "1" if /i "%volumeLevel%" neq "1.0" if /i "%volumeLevel%" neq "1.2" if /i "%volumeLevel%" neq "1.4" if /i "%volumeLevel%" neq "1.5" if /i "%volumeLevel%" neq "1.6" if /i "%volumeLevel%" neq "1.8" if /i "%volumeLevel%" neq "2" if /i "%volumeLevel%" neq "2.0" if /i "%volumeLevel%" neq "2.2" if /i "%volumeLevel%" neq "2.5" if /i "%volumeLevel%" neq "3" if /i "%volumeLevel%" neq "3.0" if /i "%volumeLevel%" neq "3.5" if /i "%volumeLevel%" neq "4" if /i "%volumeLevel%" neq "4.0" (echo.
 echo   volumeLevel unrecognized "%volumeLevel%"   
@@ -185,7 +194,13 @@ if /i "%fps%" equ "invalid" (echo.
 echo  Frames Per Second -FPS- check of "%inputVideo_Name%%inputVideo_Extension%" failed
 echo  Please make sure it is a valid video file and try again.
 goto end)
+::check if a non-original fps specified
+if /i "%fps%" neq "original" set changeFPS=true
 
+::aqmode=default,0,1,2,3
+if /i "%aqMode%" neq "default" if /i "%aqMode%" neq "1" if /i "%aqMode%" neq "2" if /i "%aqMode%" neq "3" (echo.
+echo  Error. Unrecognized AQ-Mode: "%aqMode%"
+goto end)
 
 ::There are options specified that are not really compatible together such as:
 ::12-bit h264
@@ -275,44 +290,69 @@ set inputname=%~1
 set outputname_noext=%inputVideo_Name%.%codec%
 if /i "%resolution%" neq "original" set outputname_noext=%outputname_noext%.%quality%
 
+::need code for...
+::ffmpeg h264
+::ffmpeg h254 vapoursynth
+::ffmpeg h265
+::ffmpeg h265 vapoursynth
+::x264
+::x264 vapourysnth
+::x265
+::x265 vapourysnth
+
+::build command lines
+set miscSettingsFFmpeg=
+set miscSettingsX264=
+set miscSettingsX265=
+if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -vf "fps=%fps%"
+if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -vf "scale=%resolution%"
+if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original"  set miscSettingsFFmpeg=%miscSettingsFFmpeg% -vf "fps=%fps%,scale=%resolution%"
+if /i "%changeChroma%" equ "true" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -pix_fmt yuv%chroma%p
+
+
 ::branch
-if /i "%useFFmpegFor8BitEncodes%" equ "true" if /i "%bitDepth%" equ "8" goto ffmpeg
+if /i "%useFFmpegFor8BitEncodes%" equ "true" if /i "%bitDepth%" equ "8" goto ffmpegEnc
 goto videoPipe
 
-:ffmpeg
-set videoOnlyOutputName=%outputname_noext%.ffmpeg.%crfValue%.%preset%.%bitdepth%.%chroma%.mp4
+:ffmpegEnc
+if /i "%changeChroma%" neq "true" set videoOnlyOutputName=%outputname_noext%.ffmpeg.%crfValue%.%preset%.%bitdepth%.mp4
+if /i "%changeChroma%" equ "true" set videoOnlyOutputName=%outputname_noext%.ffmpeg.%crfValue%.%preset%.%bitdepth%.%chroma%.mp4
 if exist "%videoOnlyOutputName%" del "%videoOnlyOutputName%"
 
+::fork
 if /i "%codec%" equ "h265" goto ffmpegH265
+::need "-x264-params" for aq mode
+if /i "%aqMode%" neq "default" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -x264-params aq-mode=3
+::need "-x265-params" for lossless mode
+
 if /i "%vapourSynthFile%" equ "true" goto ffmpegH264VapourSynth
 
 :ffmpegH264
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf "fps=%fps%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf "fps=%fps%,scale=%resolution%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf "scale=%resolution%" "%videoOnlyOutputName%"
+::echo "%ffmpegexe%" -i "%inputname%" %miscSettingsFFmpeg% -preset %preset% -crf %crfValue% -an -sn  "%videoOnlyOutputName%"
+"%ffmpegexe%" -i "%inputname%" %miscSettingsFFmpeg% -preset %preset% -crf %crfValue% -an -sn  "%videoOnlyOutputName%"
 goto afterFFmpegEncode
 
 :ffmpegH264VapourSynth
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf "fps=%fps%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf "fps=%fps%,scale=%resolution%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -preset %preset% -crf %crfValue% -an -sn -vf "scale=%resolution%" "%videoOnlyOutputName%"
+"%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an %miscSettingsFFmpeg% -preset %preset% -crf %crfValue% "%videoOnlyOutputName%"
 goto afterFFmpegEncode
 
 :ffmpegH265
+::need -x265-params for lossless mode and aq mode
+if /i "%crfValue%" neq "0" if /i "%aqMode%" neq "default" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -x265-params aq-mode=3
+if /i "%crfValue%" equ "0" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -x265-params lossless=1
+
+::It is pointless to specify an aq mode in lossless mode, but the syntax would be:
+::if /i "%crf%" equ "0" if /i "%aqMode%" neq "default" set miscSettingsFFmpeg=%miscSettingsFFmpeg% -x265-params aq-mode=3:lossless=1
+
+
 if /i "%vapourSynthFile%" equ "true" goto ffmpegH265VapourSynth
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "fps=%fps%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "fps=%fps%,scale=%resolution%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "scale=%resolution%" "%videoOnlyOutputName%"
+
+"%ffmpegexe%" -i "%inputname%" -an %miscSettingsFFmpeg% -c:v libx265 -preset %preset% -crf %crfValue% "%videoOnlyOutputName%"
+
 goto afterFFmpegEncode
 
 :ffmpegH265VapourSynth
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "fps=%fps%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "fps=%fps%,scale=%resolution%" "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -pix_fmt yuv%chroma%p -c:v libx265 -preset %preset% -x265-params crf=%crfValue% -an -vf "scale=%resolution%" "%videoOnlyOutputName%"
+"%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an %miscSettingsFFmpeg% -c:v libx265 -preset %preset% -crf %crfValue% "%videoOnlyOutputName%"
 
 :afterFFmpegEncode
 
@@ -320,6 +360,8 @@ goto processAudio
 
 
 :videoPipe
+@echo on
+echo chroma=%chroma%
 ::uses MEGUI and wal pl naming format: x265-10b.exe 
 if /i "%codec%" equ "h264" set encodeExe=%x264prefix%-%bitDepth%b.exe
 if /i "%codec%" equ "h265" set encodeExe=%x265prefix%-%bitDepth%b.exe
@@ -329,44 +371,63 @@ echo   unable to find "%encodeExe%"
 echo   please verify this file exists to encode at %bitDepth%-bit depth
 goto end)
 
-set videoOnlyOutputName=%outputname_noext%.%crfValue%.%preset%.%bitdepth%.%chroma%.%codec%
+if /i "%changeChroma%" neq "true" set videoOnlyOutputName=%outputname_noext%.%crfValue%.%preset%.%bitdepth%.%codec%
+if /i "%changeChroma%" equ "true" set videoOnlyOutputName=%outputname_noext%.%crfValue%.%preset%.%bitdepth%.%chroma%.%codec%
 if exist "%videoOnlyOutputName%" del "%videoOnlyOutputName%"
 
-::x264.exe and x265.exe use different syntaxes
+::x264.exe and x265.exe use slightly different syntaxes
+if /i "%aqMode%" neq "default" (set miscSettingsX264=--aq-mode %aqMode%
+set miscSettingsX265=--aq-mode %aqMode%)
+
+::need x264-params for aq mode
+::need x265-params for lossless mode
+
+::update chroma settings for x264; x265 does not need the chroma settings specified and will auto-detect based upon source
+if /i "%changeChroma%" equ "true" set miscSettingsX264=%miscSettingsX264% --output-csp i%chroma%
+::update lossless settings for x265; x264 does it automatically at crf=0
+if /i "%crfValue%" equ "0" set miscSettingsX265=%miscSettingsX265% --lossless
+
+::debug code
+::echo miscSettingsX265=%miscSettingsX265%
+
+
+::fork
 if /i "%codec%" equ "h265" goto videoPipeH265
 if /i "%vapourSynthFile%" equ "true" goto videoPipeH264VapourSynth
 
 :videoPipeH264
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%" -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%,scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf "scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+"%ffmpegexe%" -i "%inputname%" -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m %miscSettingsX264% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
 goto afterVideoPipeH265
 
 :videoPipeH264VapourSynth
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%" -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%,scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%chroma%" equ "420" if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%chroma%" neq "420" if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -vf "scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m --output-csp i%chroma% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+::ideal
+::"%ffmpegexe%" -i "%inputname%" -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m %miscSettingsX264% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+
+::more efficent, less features
+"%vspipeexe%" --y4m "%inputname%" - | "%encodeExe%" - --demuxer y4m %miscSettingsX264% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+
+::inefficent, full featured
+::"%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - | "%encodeExe%" - --demuxer y4m %miscSettingsX264% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
 goto afterVideoPipeH265
 
 
 :videoPipeH265
 if /i "%vapourSynthFile%" equ "true" goto videoPipeH265VapourSynth
-
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%" -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%,scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%ffmpegexe%" -i "%inputname%" -an -sn -pix_fmt yuv%chroma%p -vf "scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+::echo "%ffmpegexe%" -i "%inputname%" -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - ^| "%encodeExe%" --input - --y4m %miscSettingsX265% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+"%ffmpegexe%" -i "%inputname%" -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m %miscSettingsX265% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
 goto afterVideoPipeH265
 
 :videoPipeH265VapourSynth
-if /i "%changeFPS%" equ "true" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%" -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "true" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -vf "fps=%fps%,scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" equ "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
-if /i "%changeFPS%" equ "false" if /i "%quality%" neq "original" "%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn -pix_fmt yuv%chroma%p -vf "scale=%resolution%" -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+::The ideal solution is to have ffmpeg read the .vpy file directly (just like .avs files) and manipulate the input as needed for the encodeExe. However, that is not possible without compiling ffmpeg with explicit vapoursynth support since this is not usually included.
+::Alternatives are to either drop ffmpeg, or to have a 3-stage pipe. Pick 1:
+::ideal command, does not work
+::"%ffmpegexe%" -i "%inputname%" -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m %miscSettingsX265% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
 
+::more efficent, but fewer features
+"%vspipeexe%" --y4m "%inputname%" - | "%encodeExe%" --input - --y4m %miscSettingsX265% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
+
+::inefficent, but full featured
+::"%vspipeexe%" --y4m "%inputname%" - | "%ffmpegexe%" -i - -an -sn %miscSettingsFFmpeg% -f yuv4mpegpipe - | "%encodeExe%" --input - --y4m %miscSettingsX265% --crf %crfValue% --preset %preset% --output "%videoOnlyOutputName%"
 :afterVideoPipeH265
 
 
@@ -381,11 +442,11 @@ if /i "%cleanupEncodedVideoTrack%" equ "true" if exist "%videoOnlyOutputName%" d
 
 ::if preferred container is mp4, then use ffmpeg to copy the video stream and 1 audio stream
 if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if exist "%outputname_noext%.mp4" del "%outputname_noext%.mp4"
-if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 0 ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 "%outputname_noext%.mp4"
-if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 1 ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 "%outputname_noext%.mp4"
-if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 2 ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 -map 0:a:1 "%outputname_noext%.mp4"
-if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 3 ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 -map 0:a:1 -map 0:a:2 "%outputname_noext%.mp4"
-if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 4 ffmpeg -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 -map 0:a:1 -map 0:a:2 -map 0:a:3 "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 0 "%ffmpegexe%" -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 1 "%ffmpegexe%" -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 2 "%ffmpegexe%" -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 -map 0:a:1 "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 3 "%ffmpegexe%" -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 -map 0:a:1 -map 0:a:2 "%outputname_noext%.mp4"
+if /i "%preferredContainer%" equ "mp4" if /i "%mp4Safe%" equ "true" if %audioStreamCount% equ 4 "%ffmpegexe%" -i "%outputname_noext%.mkv" -c:v copy -c:a copy -map 0:v:0 -map 0:a:0 -map 0:a:1 -map 0:a:2 -map 0:a:3 "%outputname_noext%.mp4"
 
 ::cleanup
 if /i "%cleanupAudioTracks%" equ "true" if /i "%encodeAudio%" equ "true" for /L %%i in (0,1,%currentAudioStreamCount%) do (del "%inputname%.audio%%i.%audioExtension%")
@@ -397,9 +458,10 @@ goto end
 
 ::startFunctions::
 :batchvEncode
-set tempfile=temp.txt
+set tempfile=temp.%random%.txt
 if exist "%tempfile%" del "%tempfile%"
-if exist "temp.cmd" del "temp.cmd"
+set tempcmdfile=temp.%random%.cmd
+if exist "%tempcmdfile%" del "%tempcmdfile%"
 
 dir /b *.mkv >> %tempfile% 2>nul
 dir /b *.mp4 >> %tempfile% 2>nul
@@ -421,13 +483,13 @@ dir /b *.avs >> %tempfile% 2>nul
 dir /b *.vpy >> %tempfile% 2>nul
 dir /b *.y4m >> %tempfile% 2>nul
 
-for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>"temp.cmd"
+for /f "delims=*" %%i in (%tempfile%) do echo call vencode2 "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>"%tempcmdfile%"
 
 if exist "%tempfile%" del "%tempfile%"
-type temp.cmd
-call temp.cmd
-type temp.cmd
-del temp.cmd
+type "%tempcmdfile%"
+call "%tempcmdfile%"
+type "%tempcmdfile%"
+del "%tempcmdfile%"
 
 goto end
 
@@ -435,19 +497,23 @@ goto end
 ::takes a filesource %1 as an input
 :encodeAudioFunct
 set audioInput=%~1
-ffmpeg -i "%audioInput%" -vn -sn -c:a %codecLibrary% -b:a %audioBitrate%k "%audioInput%.%audioExtension%"
+"%ffmpegexe%" -i "%audioInput%" -vn -sn -c:a %codecLibrary% -b:a %audioBitrate%k "%audioInput%.%audioExtension%"
 goto :eof
 
 
-::Used to update %fps% variable for "ffmpeg -vf fps=%fps%" and takes pprobe compatible video file as input
+::Used to update %fps% variable for "ffmpeg -vf fps=%fps%" and takes ffprobe compatible video file as input
 ::Usage: call :updateFPS "%video%"
 :updateFPS
 if not exist "%~1" (echo "%~1" does not exist
 goto :eof)
 set fps=invalid
 
+::debug code
+::echo vapourSynthFile=%vapourSynthFile%
+::@echo on
+
 if /i "%vapourSynthFile%" neq "true" "%ffprobeexe%" -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1 "%~1">"%tempFPSFile%"
-if /i "%vapourSynthFile%" equ "true" "%vspipeexe%" --y4m "%~1" - | "%ffprobeexe%" -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1 -i - >"%tempFPSFile%"
+if /i "%vapourSynthFile%" equ "true" "%vspipeexe%" --y4m "%~1" - | "%ffprobeexe%"  -f yuv4mpegpipe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1 -i - >"%tempFPSFile%"
 if not exist "%tempFPSFile%" goto :eof
 
 for /f "delims== tokens=1,2,3,4" %%i in (%tempFPSFile%) do (set fps=%%j)
@@ -455,6 +521,12 @@ for /f "delims== tokens=1,2,3,4" %%i in (%tempFPSFile%) do (set fps=%%j)
 if not defined fps set fps=invalid
 if /i "%fps%" equ "" set fps=invalid
 if /i "%fps%" equ " " set fps=invalid
+
+::debug code
+::type %tempFPSFile%
+::echo fps=%fps%
+::echo pie pie
+::pause
 
 if exist "%tempFPSFile%" del "%tempFPSFile%"
 goto :eof
@@ -581,14 +653,14 @@ echo   vEncode file.mkv h265 "" "" opus "" "" 420 24000/1001
 echo.
 echo   Suggested values and (defaults):
 echo   Codec: h264, h265, (%default_codec%)
-echo   Resolutions (16:9): 480p, 576p, 720p, 1080p, 1440p, 2160p, 4k
-echo   4:3 : 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p_43, 4k_43
+echo   16:9 Resolutions: (original), 480p, 576p, 720p, 1080p, 1440p, 2160p, 4k
+echo   4:3: 480p_43, 576p_43, 720p_43, 1080p_43, 1440p_43, 2160p_43, 4k_43
 echo   CRF values: usually 16-28, 0=lossless, (%default_crfValue%)
 echo   AudioCodecs: copy, none, opus, vorbis, aac, mp3, ac3, wav, flac (%default_audioCodec%)
 echo   Presets: ultrafast,veryfast,fast,medium,slow,veryslow,placebo, (%default_preset%)
 echo   Bit depth: 8, 10 or 12, (%default_bitDepth%)
-echo   YUV Pixel Format: 420, 422, 444, (%default_chroma%)
-echo   FPS: 24000/1001, 25000/1000, 30000/1000, 30000/1001, (%default_fps%)
+echo   YUV Pixel Format: original, 420, 422, 444, (%default_chroma%)
+echo   FPS: original, 24000/1001, 25000/1000, 30000/1000, 30000/1001, (%default_fps%)
 echo   Note: Use "" for a value to use the default.
 echo.
 echo   To encode all video files in a directory:

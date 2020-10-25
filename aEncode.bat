@@ -17,6 +17,7 @@ set maxNumberOfAudioTracks=all
 ::If set to extract, then audio will be extracted from a/v files and encoded.
 ::If not set to extract, then, for a/v files, a new mkv file will be created with the encoded audio merged back with the untouched video stream.
 set default_extractOrMerge=extract
+::extract, merge
 ::This has no effect unless extractAudioFromVideo is true.
 set cleanupAudioTracks=true
 
@@ -134,6 +135,7 @@ goto end
 ::6) find all files in the current directory -batch
 :directoryMode
 dir /b *.mkv >> %tempfile% 2>nul
+dir /b *.mka >> %tempfile% 2>nul
 dir /b *.mp4 >> %tempfile% 2>nul
 dir /b *.wmv >> %tempfile% 2>nul
 dir /b *.mpg >> %tempfile% 2>nul
