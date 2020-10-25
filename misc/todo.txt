@@ -1,20 +1,11 @@
 Todo:
 :vencode:
-Quality: test and document volume adjustment parameter better -done
-Rewrite: Make fps filter optional -how? -done (line duplication)
-Feature: Make (encoder .exe) single threaded mode available (or choose # of threads) -no, wpp decreases storage efficency < ~1% and disabling it increases encode times by 20%, threads count has no effect on size (<0.01%)
-Feature: support lossless mode (huffyuv) -meh, h264 crf=0 is already lossless and supported
-Rewrite: Add FLAC support (update aencode first) -done
-Quality: check if libfdk_aac is available, if it is, use that for audio encodes instead. -no, native aac encoder is comparable
-Feature: add GOP options -will not add. ffmpeg already has a concise UI for this.
+Quality: check if libfdk_aac is available, if it is, use that for audio encodes instead. -maybe, but native aac encoder is comparable
+Feature: Add support for VapourSynth audio. Add support to aEncode first.
 
 :aencode:
 Rewrite/Bug: Should preserve audio metainfo (language) if one was specified for Matroska containers
 Bug: aencode should append the new extension not change it (else transcoding errors out)
-Bug: 224k should also work, not just 224 when specifying bitrate -done
-Rewrite: bitrate should be any valid range (32-1548) not just specific bitrates -done
-Feature: add FLAC support -done (also wave)
-Feature: should support extracting and transcoding audio from mkv -done
 
 Note: Removed yadif from video filters since it was causing distortions (AA) in already progressive video.
 User is now responsible for making sure their content is progressive prior to encoding (since interlacing is icky).

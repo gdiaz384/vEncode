@@ -28,6 +28,8 @@ The development emphasis is on zero-configuration "just works" software.
 
 Note: Drag-and-drop also works.
 
+To change the defaults, open `vEncode.bat` and look under `::1) set defaults`.
+
 ### Download:
 ```
 Latest Version: 1.0.2
@@ -121,7 +123,12 @@ aEncode * opus 192 2.5
     - 2) Certain special characters like "&", "!" and certain unicode characters in the file name or file path cause unexpected behavior.
         - Reason: The first two characters are both reserved in the batch language and valid for use in Windows file names and paths, hence the conflict.
         - Workaround: Rename or move file. If using drag and drop, consider instead opening a command prompt and navigating to the file's directory before encoding.
-
+    - 3) Drag-and-Drop sometimes does not work.
+        - Reason: unclear.
+    - 4) For AVISynth weird color spaces don't pipe well. The error is:
+        - ` ERROR: yuv4mpeg can only handle [...]`
+        - `Error initializing output stream 0:0 --`
+        - Try using [Convert](http://avisynth.nl/index.php/Convert) such as `ConvertToYV12()` or `ConvertToYV24()` before encoding or changing the colorspace (420, 422, 444) at runtime.
 - The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64. Rename it appropriately.
 
 ![screenshot1](misc/BitDepthCompatability.png)

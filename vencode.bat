@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+::vEncode.bat v1.0.2
+::Last Modified: 2020Oct25
+
 ::Summary:
 ::1) set defaults
 ::2) get inputs
