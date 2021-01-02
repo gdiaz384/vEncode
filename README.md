@@ -32,7 +32,7 @@ To change the defaults, open `vEncode.bat` and look under `::1) set defaults`.
 
 ### Download:
 ```
-Latest Version: 1.0.2
+Latest Version: 1.0.3
 In Development: 1.1.0
 ```
 Click [here](//github.com/gdiaz384/vEncode/releases) or on "Releases" at the top-right to download the latest version.
@@ -114,21 +114,6 @@ aEncode * opus 192 2.5
 - 8-bit encodes can use either `ffmpeg.exe` or `x264-8b.exe`/`x265-8b.exe` but 10/12 bit encoding always require `x264-10b.exe`/`x264-12b.exe` and `x265-10.exe`/`x265-12.exe`.
 - The encode binaries (x264/x265) included in releases require AVX capable CPUs. For non-AVX CPUs, download different binaries using the links below. 
     - See: Dependencies.
-- Known Issues (will not fix): 
-    - 1) The following error occurs when ffprobe/ffplay/ffmpeg interact with vspipe:
-        - `Error: fwrite() call failed when writing frame: 1, plane: 0, line: 21, errno: 22`
-        - To reproduce this error: 
-        - `vspipe --y4m inputFile.vpy - | ffprobe -f yuv4mpegpipe -i -`
-        - It is inconsequential and not indicative of an error in the resulting encoded files.
-    - 2) Certain special characters like "&", "!" and certain unicode characters in the file name or file path cause unexpected behavior.
-        - Reason: The first two characters are both reserved in the batch language and valid for use in Windows file names and paths, hence the conflict.
-        - Workaround: Rename or move file. If using drag and drop, consider instead opening a command prompt and navigating to the file's directory before encoding.
-    - 3) Drag-and-Drop sometimes does not work.
-        - Reason: unclear.
-    - 4) For AVISynth weird color spaces don't pipe well. The error is:
-        - ` ERROR: yuv4mpeg can only handle [...]`
-        - `Error initializing output stream 0:0 --`
-        - Try using [Convert](http://avisynth.nl/index.php/Convert) such as `ConvertToYV12()` or `ConvertToYV24()` before encoding or changing the colorspace (420, 422, 444) at runtime.
 - The following OS architecture charts lists the default compatibility of the provided binaries with various bit depths. If the required binary is not provided (marked as "No" on the chart) and needed, compile/obtain one and place into bin/x86 or bin/x64. Rename it appropriately.
 
 ![screenshot1](misc/BitDepthCompatability.png)
@@ -165,6 +150,25 @@ __Resolution Map__:
 1440p | 2560x1440 | 1440p_43 | 1920x1440
 2160p | 3840x2160 | 2160p_43 | 2880x2160
 4k | 4096x2160 | 4k_43 | 2880x2160
+
+### Known Issues:
+
+Will not fix:
+
+- 1) The following error occurs when ffprobe/ffplay/ffmpeg interact with vspipe:
+    - `Error: fwrite() call failed when writing frame: 1, plane: 0, line: 21, errno: 22`
+    - To reproduce this error: 
+    - `vspipe --y4m inputFile.vpy - | ffprobe -f yuv4mpegpipe -i -`
+    - It is inconsequential and not indicative of an error in the resulting encoded files.
+- 2) Certain special characters like "&", "!" and certain unicode characters in the file name or file path cause unexpected behavior.
+    - Reason: The first two characters are both reserved in the batch language and valid for use in Windows file names and paths, hence the conflict.
+    - Workaround: Rename or move file. If using drag and drop, consider instead opening a command prompt and navigating to the file's directory before encoding.
+- 3) Drag-and-Drop sometimes does not work.
+    - Reason: unclear.
+- 4) For AVISynth, weird color spaces don't pipe well. The error is:
+    - ` ERROR: yuv4mpeg can only handle [...]`
+    - `Error initializing output stream 0:0 --`
+    - Workaround: Try using [Convert](http://avisynth.nl/index.php/Convert) such as `ConvertToYV12()` or `ConvertToYV24()` before encoding or changing the colorspace (420, 422, 444) at runtime.
 
 ### Additional Notes For AVISynth Users:
 

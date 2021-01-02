@@ -363,7 +363,7 @@ goto processAudio
 
 
 :videoPipe
-@echo on
+::@echo on
 echo chroma=%chroma%
 ::uses MEGUI and wal pl naming format: x265-10b.exe 
 if /i "%codec%" equ "h264" set encodeExe=%x264prefix%-%bitDepth%b.exe
@@ -486,7 +486,7 @@ dir /b *.avs >> %tempfile% 2>nul
 dir /b *.vpy >> %tempfile% 2>nul
 dir /b *.y4m >> %tempfile% 2>nul
 
-for /f "delims=*" %%i in (%tempfile%) do echo call vencode2 "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>"%tempcmdfile%"
+for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>"%tempcmdfile%"
 
 if exist "%tempfile%" del "%tempfile%"
 type "%tempcmdfile%"
