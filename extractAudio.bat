@@ -1,8 +1,18 @@
 @echo off
 setlocal enabledelayedexpansion
+pushd "%~dp1"
 
+::set program options
+::true, false
+set extractSubtitles=false
+::in bytes, default is 250 KB    ex. 16152576=15.774 MB; bytes *1024 = KB; KB * 1000 = MB
+set minimumFileSizeToProcess=256000
+
+::read input
 :: batchMode for usage as: extractAudio *
 if /i "%~1" equ "*" (goto batchMode
+)
+if /i "%~2" neq "" (set extractSubtitles=%~2
 )
 
 ::input validation
@@ -12,9 +22,18 @@ goto end
 if not exist "%~nx1" (echo Input file "%~nx1" not found.
 goto end
 )
+for /f "usebackq" %%i in ('%~nx1') do set fileSize=%%~zi
+echo fileSize="%fileSize%"
+if %fileSize% lss %minimumFileSizeToProcess% (echo Skipping file "%~nx1". Too small.
+goto end
+)
+
+if /i "%extractSubtitles%" neq "true" if /i "%extractSubtitles%" neq "false" (echo Error. extractSubtitles mode of "%extractSubtitles%" is unrecognized. Must be true or false.
+goto end)
+
+FOR /F "usebackq" %%A IN ('%file%') DO set size=%%~zA
 
 ::set local variables
-pushd "%~dp1"
 set tempffprobeFile=temp.%random%.txt
 set codecLibrary=copy
 set ffprobeexe=ffprobe.exe
@@ -24,16 +43,12 @@ set ffmpegexe=ffmpeg.exe
 call :extractAudio "%~nx1"
 
 
-
-
-
-
-
 ::end program
 goto end
 
 
 ::start functions
+::Usage: extractAudio *
 :batchMode
 set tempfile=temp.%random%.txt
 
@@ -48,6 +63,7 @@ dir /b *.avi >> %tempfile% 2>nul
 dir /b *.ogg >> %tempfile% 2>nul
 dir /b *.asf >> %tempfile% 2>nul
 dir /b *.3gp >> %tempfile% 2>nul
+dir /b *.m2ts >> %tempfile% 2>nul
 
 dir /b *.m4a >> %tempfile% 2>nul
 dir /b *.ac3 >> %tempfile% 2>nul
@@ -70,7 +86,7 @@ echo   filecount=%fileCount%
 ::for each file extract out the audio
 for /L %%i in (1,1,%fileCount%) do (
 echo  processingfile=!file[%%i]!
-call extractAudio "!file[%%i]!"
+call extractAudio "!file[%%i]!" %extractSubtitles%
 )
 
 if exist "%tempfile%" del "%tempfile%"
@@ -87,6 +103,19 @@ set extractAudioFunctFileName=%~nx1
 set inputFileNameNoExt=%~n1
 set inputFileExtension=%~x1
 set audioStreamCount=0
+set mergedFromM2tsFileName=invalid
+
+if /i "%extractSubtitles%" equ "true" mkvmerge -o "%inputFileNameNoExt%.subtitlesAndChapters.mkv" --no-video --no-audio "%extractAudioFunctFileName%"
+
+::@echo on
+::ffprobe does not report the correct number of audio streams when working with m2ts files sometimes, so create a temporary mkv file as a workaround
+if /i "%inputFileExtension%" equ ".m2ts" (set mergedFromM2tsFileName=%inputFileNameNoExt%.temp.mkv
+set extractAudioFunctFileName=%inputFileNameNoExt%.temp.mkv
+set inputFileNameNoExt=%inputFileNameNoExt%.temp
+set inputFileExtension=.mkv
+mkvmerge -o "!mergedFromM2tsFileName!" --no-video "%extractAudioFunctFileName%"
+)
+::pause
 
 
 if /i "%inputFileExtension%" equ ".opus" set audioOnlyFile=true
@@ -142,7 +171,7 @@ echo extractedCodec for %inputFile%="%extractedCodec%"
 ::@echo off
 ::pause
 
-set audioExtension=m4a
+set audioExtension=mka
 
 if /i "%extractedCodec%" equ "opus" set audioExtension=opus
 if /i "%extractedCodec%" equ "libopus" set audioExtension=opus
@@ -172,6 +201,7 @@ goto :eof
 ::cleanup temporary files
 :end
 if exist "%tempffprobeFile%" del "%tempffprobeFile%"
+if /i "%mergedFromM2tsFileName%" neq "invalid" if exist "%mergedFromM2tsFileName%" del "%mergedFromM2tsFileName%"
 for /L %%i in (0,1,%currentAudioStreamCount%) do if exist "audio.%%i.txt" del "audio.%%i.txt"
 
 popd

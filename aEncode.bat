@@ -145,6 +145,7 @@ dir /b *.avi >> %tempfile% 2>nul
 dir /b *.ogg >> %tempfile% 2>nul
 dir /b *.asf >> %tempfile% 2>nul
 dir /b *.3gp >> %tempfile% 2>nul
+dir /b *.m2ts >> %tempfile% 2>nul
 
 dir /b *.m4a >> %tempfile% 2>nul
 dir /b *.ac3 >> %tempfile% 2>nul

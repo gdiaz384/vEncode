@@ -485,6 +485,7 @@ dir /b *.hevc >> %tempfile% 2>nul
 dir /b *.avs >> %tempfile% 2>nul
 dir /b *.vpy >> %tempfile% 2>nul
 dir /b *.y4m >> %tempfile% 2>nul
+dir /b *.m2ts >> %tempfile% 2>nul
 
 for /f "delims=*" %%i in (%tempfile%) do echo call vencode "%%i" %2 %3 %4 %5 %6 %7 %8 %9>>"%tempcmdfile%"
 
