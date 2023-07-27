@@ -4,15 +4,16 @@ pushd "%~dp1"
 
 ::set program options
 ::true, false
-set extractSubtitles=false
+set extractSubtitlesDefaultSetting=false
 ::in bytes, default is 250 KB    ex. 16152576=15.774 MB; bytes *1024 = KB; KB * 1000 = MB
 set minimumFileSizeToProcess=256000
 
 ::read input
 :: batchMode for usage as: extractAudio *
-if /i "%~1" equ "*" (goto batchMode
-)
 if /i "%~2" neq "" (set extractSubtitles=%~2
+)
+if /i "%~2" equ "" set extractSubtitles=%extractSubtitlesDefaultSetting%
+if /i "%~1" equ "*" (goto batchMode
 )
 
 ::input validation
