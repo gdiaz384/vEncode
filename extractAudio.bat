@@ -32,8 +32,6 @@ goto end
 if /i "%extractSubtitles%" neq "true" if /i "%extractSubtitles%" neq "false" (echo Error. extractSubtitles mode of "%extractSubtitles%" is unrecognized. Must be true or false.
 goto end)
 
-FOR /F "usebackq" %%A IN ('%file%') DO set size=%%~zA
-
 ::set local variables
 set tempffprobeFile=temp.%random%.txt
 set codecLibrary=copy
