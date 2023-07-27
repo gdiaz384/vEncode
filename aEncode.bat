@@ -50,7 +50,7 @@ set ffmpegexe=%exePath%\bin\%architecture%\ffmpeg.exe
 set ffprobeexe=%exePath%\bin\%architecture%\ffprobe.exe
 set mkvMergeExe=%exePath%\bin\%architecture%\mkvmerge.exe
 
-set tempfile=temp.txt
+set tempfile=temp.%random%.txt
 if exist "%tempfile%" del "%tempfile%"
 set tempffprobeFile=tempaudio.txt
 if exist "%tempffprobeFile%" del "%tempffprobeFile%"
@@ -152,6 +152,7 @@ dir /b *.mp3 >> %tempfile% 2>nul
 dir /b *.aac >> %tempfile% 2>nul
 dir /b *.opus >> %tempfile% 2>nul
 dir /b *.flac >> %tempfile% 2>nul
+dir /b *.thd >> %tempfile% 2>nul
 dir /b *.wav >> %tempfile% 2>nul
 
 set fileCount=1
@@ -191,6 +192,7 @@ if /i "%inputFileExtension%" equ ".aac" set audioOnlyFile=true
 if /i "%inputFileExtension%" equ ".mp3" set audioOnlyFile=true
 if /i "%inputFileExtension%" equ ".ac3" set audioOnlyFile=true
 if /i "%inputFileExtension%" equ ".flac" set audioOnlyFile=true
+if /i "%inputFileExtension%" equ ".thd" set audioOnlyFile=true
 if /i "%inputFileExtension%" equ ".wav" set audioOnlyFile=true
 
 ::figure out how many streams the audio has by dumping out the codec_name for each

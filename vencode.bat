@@ -634,7 +634,7 @@ echo   For Vapoursynth support: "vspipe" in ^%%path^%%
 echo.
 echo   Syntax:
 echo   vEncode vid.mp4 {codec} {res} {crf} {acodec} {prest} {btdph} {chroma} {fps}
-echo   Order is impt, {} is optional, Double quotes "" means "use the default value"
+echo   Order is impt. {} is optional. Double quotes "" means use the default value.
 echo   Examples:
 echo   vEncode myfile.mkv
 echo   vEncode "my file.mkv" h264
