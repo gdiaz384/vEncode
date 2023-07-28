@@ -10,11 +10,9 @@ set minimumFileSizeToProcess=256000
 
 ::read input
 :: batchMode for usage as: extractAudio *
-if /i "%~2" neq "" (set extractSubtitles=%~2
-)
 if /i "%~2" equ "" set extractSubtitles=%extractSubtitlesDefaultSetting%
-if /i "%~1" equ "*" (goto batchMode
-)
+if /i "%~2" neq "" set extractSubtitles=%~2
+if /i "%~1" equ "*" goto batchMode
 
 ::input validation
 if /i "%~nx1" equ "" (echo No input file specified.
@@ -23,11 +21,20 @@ goto end
 if not exist "%~nx1" (echo Input file "%~nx1" not found.
 goto end
 )
-for /f "usebackq" %%i in ('%~nx1') do set fileSize=%%~zi
-echo fileSize="%fileSize%"
+
+::Does not work for files with () in the name
+::for /f "usebackq" %%i in ("%~nx1") do set fileSize=%%~zi
+::@echo on
+
+set fileSizeFile=fileSize.%random%.txt
+robocopy . . "%~nx1" /l /nocopy /is /njh /njs /ndl /nc /bytes > %fileSizeFile%
+for /f %%i in (%fileSizeFile%) do set fileSize=%%i
+::echo fileSize="%fileSize%"
 if %fileSize% lss %minimumFileSizeToProcess% (echo Skipping file "%~nx1". Too small.
+echo    "%fileSize%" is less than minimum size of "%minimumFileSizeToProcess%"
 goto end
 )
+::goto end
 
 if /i "%extractSubtitles%" neq "true" if /i "%extractSubtitles%" neq "false" (echo Error. extractSubtitles mode of "%extractSubtitles%" is unrecognized. Must be true or false.
 goto end)
@@ -108,12 +115,12 @@ if /i "%extractSubtitles%" equ "true" mkvmerge -o "%inputFileNameNoExt%.subtitle
 
 ::@echo on
 ::ffprobe does not report the correct number of audio streams when working with m2ts files sometimes, so create a temporary mkv file as a workaround
-if /i "%inputFileExtension%" equ ".m2ts" (set mergedFromM2tsFileName=%inputFileNameNoExt%.temp.mkv
-set extractAudioFunctFileName=%inputFileNameNoExt%.temp.mkv
-set inputFileNameNoExt=%inputFileNameNoExt%.temp
-set inputFileExtension=.mkv
-mkvmerge -o "!mergedFromM2tsFileName!" --no-video "%extractAudioFunctFileName%"
-)
+::using parentheses here to reduce the number of "if" comparisons creates a bug when parsing filenames that use parentheses
+if /i "%inputFileExtension%" equ ".m2ts" set mergedFromM2tsFileName=%inputFileNameNoExt%.temp.mkv
+if /i "%inputFileExtension%" equ ".m2ts" set extractAudioFunctFileName=%inputFileNameNoExt%.temp.mkv
+if /i "%inputFileExtension%" equ ".m2ts" set inputFileNameNoExt=%inputFileNameNoExt%.temp
+if /i "%inputFileExtension%" equ ".m2ts" set inputFileExtension=.mkv
+if /i "%inputFileExtension%" equ ".m2ts" mkvmerge -o "!mergedFromM2tsFileName!" --no-video "%extractAudioFunctFileName%"
 ::pause
 
 
@@ -200,6 +207,7 @@ goto :eof
 ::cleanup temporary files
 :end
 if exist "%tempffprobeFile%" del "%tempffprobeFile%"
+if exist "%fileSizeFile%" del "%fileSizeFile%"
 if /i "%mergedFromM2tsFileName%" neq "invalid" if exist "%mergedFromM2tsFileName%" del "%mergedFromM2tsFileName%"
 for /L %%i in (0,1,%currentAudioStreamCount%) do if exist "audio.%%i.txt" del "audio.%%i.txt"
 
