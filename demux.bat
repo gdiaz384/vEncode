@@ -3,24 +3,30 @@ setlocal enabledelayedexpansion
 pushd "%~dp1"
 
 ::set program options
-::true, false
-set extractSubtitlesDefaultSetting=false
+::audio, subtitles, (both), all, video
+set defaultModeSetting=both
 ::in bytes, default is 250 KB    ex. 16152576=15.774 MB; bytes *1024 = KB; KB * 1000 = MB
 set minimumFileSizeToProcess=256000
 
 ::read input
-:: batchMode for usage as: extractAudio *
-if /i "%~2" equ "" set extractSubtitles=%extractSubtitlesDefaultSetting%
-if /i "%~2" neq "" set extractSubtitles=%~2
+:: batchMode for usage as: demux *
+if /i "%~2" equ "" set mode=%defaultModeSetting%
+if /i "%~2" neq "" set mode=%~2
 if /i "%~1" equ "*" goto batchMode
+if /i "%~1" equ "?" goto :Usage
+if /i "%~1" equ "/?" goto :Usage
+::aliases
+if /i "%mode%" equ "sub" set mode=subtitles
+if /i "%mode%" equ "subs" set mode=subtitles
 
 ::input validation
 if /i "%~nx1" equ "" (echo No input file specified.
-goto end
+goto :Usage
 )
 if not exist "%~nx1" (echo Input file "%~nx1" not found.
 goto end
 )
+
 
 ::Does not work for files with () in the name
 ::for /f "usebackq" %%i in ("%~nx1") do set fileSize=%%~zi
@@ -36,7 +42,44 @@ goto end
 )
 ::goto end
 
-if /i "%extractSubtitles%" neq "true" if /i "%extractSubtitles%" neq "false" (echo Error. extractSubtitles mode of "%extractSubtitles%" is unrecognized. Must be true or false.
+
+if /i "%mode%" neq "all" if /i "%mode%" neq "both" if /i "%mode%" neq "video" if /i "%mode%" neq "audio" if /i "%mode%" neq "subtitles" (echo Error. Mode value of "%mode%" is unrecognized.
+goto :Usage
+)
+
+set extractVideoMode=invalid
+set extractAudioMode=invalid
+set extractSubtitlesMode=invalid
+
+if /i "%mode%" equ "all" (set extractVideoMode=true
+set extractAudioMode=true
+set extractSubtitlesMode=true
+)
+if /i "%mode%" equ "both" (set extractVideoMode=false
+set extractAudioMode=true
+set extractSubtitlesMode=true
+)
+if /i "%mode%" equ "video" (set extractVideoMode=true
+set extractAudioMode=false
+set extractSubtitlesMode=false
+)
+if /i "%mode%" equ "audio" (set extractVideoMode=false
+set extractAudioMode=true
+set extractSubtitlesMode=false
+)
+if /i "%mode%" equ "subtitles" (set extractVideoMode=false
+set extractAudioMode=false
+set extractSubtitlesMode=true
+)
+
+
+if /i "%extractVideoMode%" neq "true" if /i "%extractVideoMode%" neq "false" (echo Error. extractVideoMode mode of "%extractVideoMode%" is unrecognized. Must be true or false.
+goto end)
+
+if /i "%extractAudioMode%" neq "true" if /i "%extractAudioMode%" neq "false" (echo Error. extractAudioMode mode of "%extractAudioMode%" is unrecognized. Must be true or false.
+goto end)
+
+if /i "%extractSubtitlesMode%" neq "true" if /i "%extractSubtitlesMode%" neq "false" (echo Error. extractSubtitlesMode mode of "%extractSubtitlesMode%" is unrecognized. Must be true or false.
 goto end)
 
 ::set local variables
@@ -46,7 +89,8 @@ set ffprobeexe=ffprobe.exe
 set ffmpegexe=ffmpeg.exe
 
 ::core logic
-call :extractAudio "%~nx1"
+call :extractAudioAndSubtitles "%~nx1"
+
 
 
 ::end program
@@ -54,7 +98,7 @@ goto end
 
 
 ::start functions
-::Usage: extractAudio *
+::Usage: demux *
 :batchMode
 set tempfile=temp.%random%.txt
 
@@ -89,19 +133,19 @@ set /a fileCount+=1
 set /a fileCount-=1
 echo   filecount=%fileCount%
 
-::for each file extract out the audio
+::for each file call demux using the mode specified
 for /L %%i in (1,1,%fileCount%) do (
 echo  processingfile=!file[%%i]!
-call extractAudio "!file[%%i]!" %extractSubtitles%
+call demux "!file[%%i]!" %~2
 )
 
 if exist "%tempfile%" del "%tempfile%"
 goto end
 
 
-::Usage: call :extractAudio myVideoFile.mp4
-::Will extract any audio tracks present
-:extractAudio
+::Usage: call :extractAudioAndSubtitles myVideoFile.mp4
+::Will extract any audio tracks present and subtitles
+:extractAudioAndSubtitles
 if /i "%~1" equ "" (echo error 
 goto :eof)
 set audioOnlyFile=false
@@ -111,16 +155,21 @@ set inputFileExtension=%~x1
 set audioStreamCount=0
 set mergedFromM2tsFileName=invalid
 
-if /i "%extractSubtitles%" equ "true" mkvmerge -o "%inputFileNameNoExt%.subtitlesAndChapters.mkv" --no-video --no-audio "%extractAudioFunctFileName%"
+if /i "%extractVideoMode%" equ "true" mkvmerge -o "%inputFileNameNoExt%.videoOnly.mkv" --no-subtitles --no-audio --no-buttons --no-attachments --no-chapters "%extractAudioFunctFileName%"
+
+if /i "%extractSubtitlesMode%" equ "true" mkvmerge -o "%inputFileNameNoExt%.subtitlesAndChapters.mkv" --no-video --no-audio "%extractAudioFunctFileName%"
+
+if /i "%extractAudioMode%" neq "true" goto :eof
 
 ::@echo on
 ::ffprobe does not report the correct number of audio streams when working with m2ts files sometimes, so create a temporary mkv file as a workaround
 ::using parentheses here to reduce the number of "if" comparisons creates a bug when parsing filenames that use parentheses
 if /i "%inputFileExtension%" equ ".m2ts" set mergedFromM2tsFileName=%inputFileNameNoExt%.temp.mkv
-if /i "%inputFileExtension%" equ ".m2ts" set extractAudioFunctFileName=%inputFileNameNoExt%.temp.mkv
+if /i "%inputFileExtension%" equ ".m2ts" mkvmerge -o "!mergedFromM2tsFileName!" --no-video --no-subtitles --no-buttons --no-attachments --no-chapters "%extractAudioFunctFileName%"
+::update variables to point to the temporary mkv file
 if /i "%inputFileExtension%" equ ".m2ts" set inputFileNameNoExt=%inputFileNameNoExt%.temp
+if /i "%inputFileExtension%" equ ".m2ts" set extractAudioFunctFileName=%inputFileNameNoExt%.mkv
 if /i "%inputFileExtension%" equ ".m2ts" set inputFileExtension=.mkv
-if /i "%inputFileExtension%" equ ".m2ts" mkvmerge -o "!mergedFromM2tsFileName!" --no-video "%extractAudioFunctFileName%"
 ::pause
 
 
@@ -163,7 +212,7 @@ goto :eof
 
 :: Changes extension from m4a to a more appropriate extension if possible
 :fixExtension
-set inputFileNumber=%1
+set inputFileNumber=%~1
 set inputFile=audio.%inputFileNumber%.txt
 set extractedCodec=invalid
 
@@ -203,6 +252,27 @@ goto :eof
 set %~1=%~2
 goto :eof
 
+
+:Usage
+
+echo.
+echo   "%~nx0" takes media files as input and outputs audio, subtitles, or both
+echo   leaving the selected contents in their original format.
+echo.
+echo   Dependencies: ffmpeg, ffprobe, mkvmerge
+echo   Syntax:
+echo   %~nx0 myfile.mp4 {video^|audio^|subtitles^|(both)^|all}
+echo   Examples:
+echo   %~nx0 myfile.mp4
+echo   %~nx0 myfile.mp4 *
+echo   %~nx0 myfile.mp4 audio
+echo   %~nx0 myfile.mp4 subtitles
+echo   %~nx0 myfile.mp4 both
+echo.
+echo   Notes: By default, (both) audio and subtitles are extracted.
+echo   Video tracks are left inside of a .mkv file.
+echo   Subtitles are left inside of a .mkv file, which is not ideal.
+echo.
 
 ::cleanup temporary files
 :end
